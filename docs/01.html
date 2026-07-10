@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第一讲 · ONNX 三件套：图简化 + FP16 转换</title>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+:root{
+  --bg:#FBFAF7; --paper:#fffdf9; --text:#2B2B2B; --heading:#1F3A5F;
+  --accent:#B5651D; --code-bg:#f5f1e8; --border:#e7e2d8; --rule:#ded8cb;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0; background:var(--bg); color:var(--text);
+  font-family:"Noto Serif SC","Songti SC","Microsoft YaHei",Georgia,serif;
+  font-size:15.5px; line-height:1.85;}
+.topbar{position:sticky; top:0; z-index:50; background:rgba(31,58,95,.97);
+  color:#fff; padding:9px 22px; display:flex; gap:18px; align-items:center;
+  font-family:"Microsoft YaHei",sans-serif; font-size:13.5px; box-shadow:0 1px 8px rgba(0,0,0,.12);}
+.topbar b{font-size:14.5px;}
+.topbar a{color:#ffe; text-decoration:none; opacity:.85; border-bottom:1px dotted transparent;}
+.topbar a:hover{opacity:1; border-bottom-color:#ffe;}
+.topbar .sp{flex:1;}
+.wrap{max-width:880px; margin:0 auto; padding:34px 26px 90px;}
+.lec-no{font-family:"Microsoft YaHei",sans-serif; letter-spacing:.25em;
+  color:var(--accent); font-weight:700; font-size:13px;}
+h1{font-size:30px; line-height:1.3; margin:6px 0 6px; color:var(--heading);}
+.subtitle{color:#6b6256; font-size:15px; margin:0 0 8px;}
+h2{font-size:22px; color:var(--heading); margin:46px 0 14px; padding-left:13px;
+  border-left:6px solid var(--accent); line-height:1.35;}
+h3{font-size:17.5px; color:#26415e; margin:28px 0 8px;}
+h4{font-size:15.5px; margin:16px 0 6px; color:#3a3a3a;}
+p{margin:10px 0; text-align:justify;}
+ul,ol{margin:10px 0; padding-left:24px;}
+li{margin:6px 0;}
+strong,b{color:#1a1a1a;}
+code{font-family:"Cascadia Code","Consolas",monospace; background:var(--code-bg);
+  padding:1px 6px; border-radius:4px; font-size:13.5px; color:#7a3e12;}
+a{color:var(--accent);}
+.lead{font-size:16px; background:#fbf6ec; border:1px solid var(--border);
+  border-radius:10px; padding:14px 18px; margin:18px 0;}
+/* 学习目标 */
+.goals{background:#f3f6fb; border:1px solid #d8e2f0; border-radius:12px;
+  padding:16px 20px; margin:20px 0;}
+.goals h3{margin:0 0 8px; color:var(--heading); font-size:16px;
+  font-family:"Microsoft YaHei",sans-serif;}
+.goals ul{margin:6px 0 0; padding-left:22px;} .goals li{margin:5px 0;}
+/* callout 卡片 */
+.callout{border-left:5px solid #999; border-radius:0 10px 10px 0; padding:13px 17px 13px 46px;
+  margin:16px 0; position:relative; background:#fff;}
+.callout::before{position:absolute; left:13px; top:11px; font-size:19px;
+  font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;}
+.callout .ttl{font-weight:700; font-family:"Microsoft YaHei",sans-serif;
+  display:block; margin-bottom:3px; font-size:14.5px;}
+.tip{border-color:#B5651D; background:#fdf4e9;} .tip::before{content:"💡";} .tip .ttl{color:#8a4a12;}
+.der{border-color:#2f6db0; background:#eef4fb;} .der::before{content:"📐";} .der .ttl{color:#23527e;}
+.warn{border-color:#c0392b; background:#fdeeec;} .warn::before{content:"⚠️";} .warn .ttl{color:#962d22;}
+.ex{border-color:#2e8b57; background:#edf7f0;} .ex::before{content:"✏️";} .ex .ttl{color:#236b43;}
+.sum{border-color:#7d5ba6; background:#f4f0fa;} .sum::before{content:"🎯";} .sum .ttl{color:#5d4382;}
+.rev{border-color:#8e44ad; background:#f6effa;} .rev::before{content:"🔁";} .rev .ttl{color:#6c3483;}
+.link{border-color:#1aaf5d; background:#ecfaf1;} .link::before{content:"🔗";} .link .ttl{color:#157f44;}
+/* 关键框 */
+.keybox{border:2px dashed var(--accent); border-radius:10px; background:#fffaf2;
+  padding:12px 18px; margin:16px 0;}
+.keybox .k{font-family:"Microsoft YaHei",sans-serif; font-weight:700; color:var(--accent);
+  font-size:13px; letter-spacing:.05em;}
+/* 代码块 */
+.pyblock{background:#ffffff; border:1px solid var(--border); border-radius:10px; margin:16px 0;
+  overflow:hidden; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; line-height:1.65;}
+.pyblock .lang{background:#f1ece2; color:#9a8f7c; padding:5px 14px; font-size:11.5px;
+  letter-spacing:.1em; font-family:"Microsoft YaHei",sans-serif; border-bottom:1px solid var(--border);}
+.pyblock pre{margin:0; padding:13px 16px; overflow-x:auto; color:#2b2b2b;}
+.pyblock .k{color:#7d2fa0;} .pyblock .s{color:#1f7a3a;} .pyblock .c{color:#9a9a9a; font-style:italic;}
+.pyblock .n{color:#b5651d;} .pyblock .f{color:#23527e;} .pyblock .o{color:#0a7a6a;}
+/* 表格 */
+table{border-collapse:collapse; width:100%; margin:16px 0; font-size:14px;
+  font-family:"Microsoft YaHei",sans-serif;}
+th,td{border:1px solid var(--rule); padding:8px 11px; text-align:left; vertical-align:top;}
+th{background:#eef2f8; color:var(--heading); font-weight:700;}
+tbody tr:nth-child(even){background:#faf8f3;}
+/* 图 */
+figure{margin:18px 0; text-align:center;}
+figure img{max-width:100%; border:1px solid var(--border); border-radius:10px; background:#fff; padding:10px;}
+figcaption{font-size:12.5px; color:#7a7264; margin-top:7px; font-family:"Microsoft YaHei",sans-serif;}
+/* 位域条 */
+.bits{display:flex; margin:10px 0 4px; font-family:"Microsoft YaHei",sans-serif;
+  font-size:12px; border-radius:6px; overflow:hidden; border:1px solid #d8d2c6;}
+.bits div{padding:6px 4px; text-align:center; color:#fff; white-space:nowrap;}
+.b-s{background:#c0392b;} .b-e{background:#2f6db0;} .b-m{background:#2e8b57;}
+.bitcap{font-size:11.5px; color:#7a7264; font-family:"Microsoft YaHei",sans-serif; margin-bottom:14px;}
+/* 思考题 */
+.qz{background:#fbf4e9; border:1px solid #ecddc4; border-radius:12px;
+  padding:16px 20px; margin:22px 0; counter-reset:q;}
+.qz h3{margin-top:0; color:var(--accent); font-family:"Microsoft YaHei",sans-serif;}
+.qz .q{position:relative; padding:9px 0 9px 40px; border-top:1px dashed #e3d4b8;}
+.qz .q:first-of-type{border-top:none;}
+.qz .q::before{counter-increment:q; content:"Q" counter(q); position:absolute; left:0; top:9px;
+  background:var(--accent); color:#fff; font-family:"Microsoft YaHei",sans-serif;
+  font-size:12px; font-weight:700; padding:1px 8px; border-radius:5px;}
+/* 页脚 */
+.foot{margin-top:50px; padding-top:18px; border-top:2px solid var(--rule);
+  display:flex; justify-content:space-between; font-family:"Microsoft YaHei",sans-serif; font-size:13.5px;}
+.foot a{color:var(--accent); text-decoration:none; font-weight:600;}
+.printhint{text-align:center; color:#9a9182; font-size:12.5px; margin-top:14px;
+  font-family:"Microsoft YaHei",sans-serif;}
+small{color:#7a7264;}
+@page{margin:1.5cm;}
+@media print{
+  .topbar,.printhint{display:none!important;}
+  body{background:#fff; font-size:11pt; line-height:1.62;}
+  .wrap{max-width:none; padding:0;}
+  .callout,figure,table,.pyblock,.keybox,.goals,.qz{break-inside:avoid;}
+  h2,h3{break-after:avoid;}
+  .pyblock{background:#fff; border:1px solid #ccc;} .pyblock pre{color:#2b2b2b;}
+  .pyblock .lang{background:#f3f3f3; color:#777;}
+  .pyblock .k{color:#7d2fa0;} .pyblock .s{color:#1f7a3a;} .pyblock .c{color:#888;}
+  .pyblock .n{color:#b5651d;} .pyblock .f{color:#23527e;} .pyblock .o{color:#0a7;}
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <b>国产加速卡 · 模型轻量化三讲</b>
+  <a href="index.html">🏠 导航</a>
+  <span class="sp"></span>
+  <a href="01.html">① ONNX/FP16</a>
+  <a href="02.html">② 剪枝</a>
+  <a href="03.html">③ 张量分解</a>
+</div>
+
+<div class="wrap">
+  <div class="lec-no">LECTURE 01</div>
+  <h1>ONNX 三件套：图简化 + FP16 转换</h1>
+  <p class="subtitle">把模型“翻译成标准流程图”，再精修流程图、换用更省的记账单位 —— onnx · onnxsim · onnxconverter-common</p>
+
+  <div class="lead">
+    这是“模型轻量化三讲”的第一讲，对应先导杯气象赛题里组委会预装的第一组武器：
+    <code>onnx 1.21.0</code> / <code>onnxsim 0.6.3</code> / <code>onnxconverter-common 1.16.0</code>。
+    这三件套不改变模型“算什么”，只改变模型“怎么被存、怎么被算”——是性价比最高、最该最先做的一步：
+    几乎不掉精度，就能把<strong>体积、显存砍掉一半，并明显提速</strong>，直接拿下评分里的 U、V。
+  </div>
+
+  <div class="goals">
+    <h3>🎯 本讲学完你会……</h3>
+    <ul>
+      <li>说清 ONNX 到底是什么——一张“算子节点 + 张量边”的<strong>计算图</strong>，以及为什么部署一定要先走它；</li>
+      <li>用 <code>torch.onnx.export</code> 把 PyTorch 模型导出成 ONNX，并验证数值一致；</li>
+      <li>用 <code>onnxsim</code> 做<strong>常量折叠 / 算子融合 / 去冗余</strong>，把导出时产生的“一团乱麻”精简成干净图；</li>
+      <li>用 <code>onnxconverter-common</code> 把模型转 <strong>FP16</strong>，理解它为什么省一半、以及哪些算子会“翻车”要 block 掉；</li>
+      <li>跑通一个小 CNN 的<strong>完整流水线</strong>，量化对比体积/显存/数值误差；</li>
+      <li>知道这一套在 <strong>pangu-weather + 国产加速卡(MIGraphX)</strong> 上具体怎么落地拿分。</li>
+    </ul>
+  </div>
+
+  <h2>§1　先认识主角：什么是 ONNX，为什么部署绕不开它</h2>
+
+  <div class="callout tip">
+    <span class="ttl">开场类比：菜谱 vs 厨师</span>
+    PyTorch 模型像是“某位厨师的私房做法”——只有这位厨师（PyTorch 运行时）在、用他那套锅具才能做。
+    而 <strong>ONNX 是把这道菜写成一张标准化、人人能照做的菜谱</strong>：每一步（算子）、每样食材（张量）都写得清清楚楚。
+    有了这张标准菜谱，换谁来做都行——ONNX Runtime、TensorRT、国产卡的 MIGraphX……都能照着高效执行。
+    轻量化的第一步，就是先把模型“翻译”成这张标准菜谱。
+  </div>
+
+  <h3>ONNX = 一张计算图</h3>
+  <p>
+    ONNX（Open Neural Network Exchange）是一种<strong>开放的模型中间表示（IR）</strong>。它把一个神经网络描述成一张
+    <strong>有向无环图（DAG）</strong>：
+  </p>
+  <ul>
+    <li><strong>节点（node）</strong>＝算子（operator），如 <code>Conv</code>、<code>MatMul</code>、<code>Relu</code>、<code>Add</code>，每个节点有固定语义和一个版本号 <code>opset</code>；</li>
+    <li><strong>边（edge）</strong>＝张量（tensor），在节点间流动；其中模型权重是“初始化好的常量张量（initializer）”；</li>
+    <li><strong>图的输入/输出</strong>＝整张图的接口，带名字、形状（可含动态维度）、数据类型。</li>
+  </ul>
+
+  <div class="callout tip">
+    <span class="ttl">为什么要先转 ONNX（动机）</span>
+    ① <strong>框架无关</strong>：脱离 PyTorch，谁都能加载；②<strong> 图级优化的舞台</strong>：算子融合、常量折叠、精度转换都在这张静态图上做最方便；
+    ③ <strong>部署引擎的统一入口</strong>：几乎所有高性能推理引擎（含本赛题国产卡的 <strong>MIGraphX</strong>、以及 ONNX Runtime）都把 ONNX 当作标准输入。
+    一句话：<em>想让模型在目标硬件上又快又省，先把它变成一张能被反复优化的标准图。</em>
+  </div>
+
+  <h3>导出：torch.onnx.export</h3>
+  <p>导出的本质是“拿一个样例输入，把模型跑一遍（trace），把经过的算子记成图”。所以你<strong>必须给一个 dummy 输入</strong>：</p>
+
+  <div class="pyblock"><div class="lang">PYTHON · 导出 ONNX</div><pre><span class="k">import</span> torch
+model <span class="o">=</span> MyNet()<span class="o">.</span>eval()                      <span class="c"># ① 一定先 eval()，固定 BN/Dropout</span>
+dummy <span class="o">=</span> torch<span class="o">.</span><span class="f">randn</span>(<span class="n">1</span>, <span class="n">3</span>, <span class="n">224</span>, <span class="n">224</span>)        <span class="c"># ② 样例输入，决定 trace 路径</span>
+
+torch<span class="o">.</span>onnx<span class="o">.</span><span class="f">export</span>(
+    model, dummy, <span class="s">"model.onnx"</span>,
+    opset_version<span class="o">=</span><span class="n">17</span>,                       <span class="c"># ③ 算子集版本，建议 ≥13，越新算子越全</span>
+    input_names<span class="o">=</span>[<span class="s">"input"</span>], output_names<span class="o">=</span>[<span class="s">"output"</span>],
+    dynamic_axes<span class="o">=</span>{<span class="s">"input"</span>: {<span class="n">0</span>: <span class="s">"batch"</span>},     <span class="c"># ④ 让 batch 维可变；不写则形状被写死</span>
+                 <span class="s">"output"</span>: {<span class="n">0</span>: <span class="s">"batch"</span>}},
+)</pre></div>
+
+  <div class="callout der">
+    <span class="ttl">导出后务必验证两件事</span>
+    <strong>(1) 图合法</strong>：<code>onnx.checker.check_model(onnx.load("model.onnx"))</code>；
+    <strong>(2) 数值一致</strong>：用 ONNX Runtime 跑一遍，和 PyTorch 输出对比，
+    <code>np.allclose(torch_out, ort_out, atol=1e-4)</code>。
+    导出阶段的“图对不对”是后面所有优化的地基——地基歪了，simplify 和 FP16 都白搭。
+  </div>
+
+  <h2>§2　onnxsim：把“一团乱麻”精简成干净图</h2>
+
+  <div class="callout tip">
+    <span class="ttl">开场类比：把绕远的路线图捋直</span>
+    导出时，PyTorch 里一句简单的 <code>x.view(...)</code> 常常会被 trace 成一长串
+    <code>Shape→Gather→Unsqueeze→Concat→Reshape</code> 的“绕路”节点——逻辑没错，但图里塞满了
+    “算来算去其实是个常数”的废动作。<strong>onnxsim 就是把这些绕路捋直</strong>：能在编译期算出来的，
+    就提前算成一个常量；能合并的，就并成一步。
+  </div>
+
+  <h3>它做的三件事</h3>
+  <ul>
+    <li><strong>常量折叠（constant folding）</strong>：把只依赖常量的子图，提前算出结果替换成一个常量。上面那串 Shape/Gather 全是基于固定形状的运算，直接折成一个常量。</li>
+    <li><strong>形状推理 + 去冗余</strong>：推断每条边的形状，删掉 Identity、无用的 Cast、空操作等。</li>
+    <li><strong>结构化简</strong>：让图更紧凑，给后续的算子融合、FP16 转换、引擎编译扫清障碍。</li>
+  </ul>
+
+  <figure>
+    <img src="assets/onnxsim_comparison.png" alt="onnxsim 简化前后的 ONNX 计算图对比：左侧节点繁多，右侧精简">
+    <figcaption>同一个模型 simplify 前（左，节点繁多）与后（右，干净紧凑）的对比。图：onnx-simplifier 官方 README（daquexian/onnx-simplifier，MIT License）</figcaption>
+  </figure>
+
+  <div class="pyblock"><div class="lang">PYTHON / CLI · 图简化</div><pre><span class="c"># 方式一：命令行，最省事</span>
+<span class="c">#   onnxsim model.onnx model_sim.onnx</span>
+
+<span class="c"># 方式二：Python API</span>
+<span class="k">import</span> onnx
+<span class="k">from</span> onnxsim <span class="k">import</span> simplify
+
+model <span class="o">=</span> onnx<span class="o">.</span><span class="f">load</span>(<span class="s">"model.onnx"</span>)
+model_sim, ok <span class="o">=</span> <span class="f">simplify</span>(model)        <span class="c"># ok=True 表示简化后与原图数值校验通过</span>
+<span class="k">assert</span> ok, <span class="s">"简化后一致性校验失败"</span>
+onnx<span class="o">.</span><span class="f">save</span>(model_sim, <span class="s">"model_sim.onnx"</span>)</pre></div>
+
+  <div class="callout warn">
+    <span class="ttl">易错点</span>
+    ① <strong>动态维度 + 简化</strong>有时会让形状推理失败——可先固定输入尺寸再 simplify，或用 <code>--overwrite-input-shape</code>；
+    ② simplify 返回的 <code>ok</code> 一定要 <code>assert</code>，<code>False</code> 说明简化前后对不上，别盲目使用；
+    ③ onnxsim 只“化简图”，<strong>不改数值精度</strong>——它和下一节的 FP16 是两件正交的事，通常先 simplify 再转 FP16。
+  </div>
+
+  <h2>§3　onnxconverter-common：FP16 转换，体积显存直接砍半</h2>
+
+  <div class="callout tip">
+    <span class="ttl">开场类比：账本从“分”改记到“角”</span>
+    模型权重默认是 <strong>FP32（32 位浮点，每个数 4 字节）</strong>。但神经网络的权重根本不需要那么高的精度——
+    就像记一笔几百块的账，记到“分”纯属浪费。<strong>FP16（16 位浮点，每个数 2 字节）</strong>把记账精度降一档，
+    每个数省一半空间。模型有上亿个数，省下来的体积和显存就非常可观，而预测结果几乎看不出差别。
+  </div>
+
+  <h3>为什么 FP16 正好省一半：看 bit 怎么分</h3>
+  <p>浮点数由三段组成：<strong>符号位 sign + 指数位 exponent + 尾数位 mantissa</strong>。一个浮点数的值是：</p>
+  <div class="keybox">
+    <span class="k">浮点数取值公式</span>
+    \[ \text{value} = (-1)^{\text{sign}} \times \left(1 + \text{mantissa}\right) \times 2^{\,\text{exponent}-\text{bias}} \]
+    其中<strong>指数位决定能表示多大/多小的范围</strong>，<strong>尾数位决定精度（有效数字）</strong>。
+  </div>
+
+  <figure>
+    <img src="assets/fp32_layout.png" alt="FP32 单精度位域：1 位符号 + 8 位指数 + 23 位尾数">
+    <figcaption>FP32（单精度，32 位）：1 符号 + 8 指数 + 23 尾数。图：Wikimedia Commons，CC BY-SA</figcaption>
+  </figure>
+  <figure>
+    <img src="assets/fp16_layout.svg" alt="FP16 半精度位域：1 位符号 + 5 位指数 + 10 位尾数" style="max-width:560px;">
+    <figcaption>FP16（半精度，16 位）：1 符号 + 5 指数 + 10 尾数。图：Wikimedia Commons，CC BY-SA</figcaption>
+  </figure>
+
+  <p>再补一个深度学习里常见的“第三种”：<strong>BF16</strong>。它把 16 位的预算换一种切法——保留 FP32 的 8 位指数（范围一样大），只砍尾数：</p>
+  <div class="bits">
+    <div class="b-s" style="flex:1;">S·1</div>
+    <div class="b-e" style="flex:8;">指数 8 位</div>
+    <div class="b-m" style="flex:23;">尾数 23 位</div>
+  </div>
+  <div class="bitcap">FP32：范围大、精度高，但 4 字节。</div>
+  <div class="bits">
+    <div class="b-s" style="flex:1;">S·1</div>
+    <div class="b-e" style="flex:5;">指数 5</div>
+    <div class="b-m" style="flex:10;">尾数 10 位</div>
+  </div>
+  <div class="bitcap">FP16：尾数多→精度较好，但指数只有 5 位→<strong>范围小，易溢出/下溢</strong>（最大约 ±65504）。</div>
+  <div class="bits">
+    <div class="b-s" style="flex:1;">S·1</div>
+    <div class="b-e" style="flex:8;">指数 8 位</div>
+    <div class="b-m" style="flex:7;">尾数 7</div>
+  </div>
+  <div class="bitcap">BF16：指数和 FP32 一样大→<strong>范围不缩、几乎不溢出</strong>，代价是精度（尾数）更糙。训练更爱用它。</div>
+
+  <div class="callout der">
+    <span class="ttl">一句话记住三者权衡</span>
+    同样 16 位，<strong>FP16 把预算给了精度（尾数 10 位），BF16 把预算给了范围（指数 8 位）</strong>。
+    部署推理常用 FP16（够准、又被各推理引擎/国产卡很好支持）；训练里为防梯度溢出常用 BF16。
+    无论哪种，相比 FP32 都是<strong>每个数 4 字节 → 2 字节，体积/显存约减半</strong>。
+  </div>
+
+  <h3>用 onnxconverter-common 一行转 FP16</h3>
+  <div class="pyblock"><div class="lang">PYTHON · FP16 转换</div><pre><span class="k">import</span> onnx
+<span class="k">from</span> onnxconverter_common <span class="k">import</span> float16
+
+model <span class="o">=</span> onnx<span class="o">.</span><span class="f">load</span>(<span class="s">"model_sim.onnx"</span>)         <span class="c"># 先 simplify 再转，效果最好</span>
+model_fp16 <span class="o">=</span> float16<span class="o">.</span><span class="f">convert_float_to_float16</span>(
+    model,
+    keep_io_types<span class="o">=</span><span class="k">True</span>,                  <span class="c"># 输入/输出仍保持 FP32，外部调用无感、更稳</span>
+    min_positive_val<span class="o">=</span><span class="n">1e-7</span>,             <span class="c"># 太小的正数下溢→截断到该下界</span>
+    max_finite_val<span class="o">=</span><span class="n">1e4</span>,                <span class="c"># 太大的数溢出→截断到该上界（防 inf）</span>
+    op_block_list<span class="o">=</span>[<span class="s">"ReduceMean"</span>, <span class="s">"Softmax"</span>],  <span class="c"># 对精度敏感的算子保持 FP32</span>
+)
+onnx<span class="o">.</span><span class="f">save</span>(model_fp16, <span class="s">"model_fp16.onnx"</span>)</pre></div>
+
+  <div class="callout der">
+    <span class="ttl">几个关键参数的含义</span>
+    <ul style="margin:4px 0;">
+      <li><code>keep_io_types=True</code>：图内部用 FP16 算，但<strong>对外接口仍是 FP32</strong>，省去调用方改数据类型的麻烦，也避免接口处精度问题。</li>
+      <li><code>min_positive_val</code> / <code>max_finite_val</code>：FP16 范围窄，超出会变 <code>inf</code>/<code>0</code>。这两个参数把数值<strong>钳制在安全区间</strong>（注意 <code>0/nan/inf</code> 本身保持不变）。</li>
+      <li><code>op_block_list</code> / <code>node_block_list</code>：把<strong>对精度敏感的算子/节点保留为 FP16 之外（FP32）</strong>——这是控精度的核心旋钮，下面专门讲。</li>
+    </ul>
+  </div>
+
+  <h3>FP16 的“翻车点”与兜底：auto_mixed_precision</h3>
+  <div class="callout warn">
+    <span class="ttl">哪些算子容易在 FP16 下出问题</span>
+    ① <strong>累加/归一类</strong>：<code>ReduceMean / ReduceSum / LayerNorm / Softmax</code>——大量数相加，FP16 尾数少会累积误差，甚至出 <code>NaN</code>/全零；
+    ② <strong>数值跨度大的</strong>：含很大或很小常量的算子，FP16 直接溢出/下溢；
+    ③ 对策：把它们丢进 <code>op_block_list</code> 保持 FP32，其余照转——这就是<strong>混合精度</strong>。
+  </div>
+  <p>如果你不想手工挑哪些算子要 block，可以用<strong>自动混合精度</strong>：它拿一组校验输入，自动找出“一转就掉精度”的算子并保留为 FP32，在“尽量省”和“别掉精度”之间自动权衡：</p>
+  <div class="pyblock"><div class="lang">PYTHON · 自动混合精度兜底</div><pre><span class="k">from</span> onnxconverter_common <span class="k">import</span> auto_mixed_precision
+<span class="k">import</span> numpy <span class="k">as</span> np
+
+feed <span class="o">=</span> {<span class="s">"input"</span>: np<span class="o">.</span><span class="f">random</span><span class="o">.</span><span class="f">randn</span>(<span class="n">1</span>,<span class="n">3</span>,<span class="n">224</span>,<span class="n">224</span>)<span class="o">.</span><span class="f">astype</span>(np<span class="o">.</span>float32)}
+<span class="c"># validate: 一个判定函数，比较 FP32 与混合精度输出是否在容忍范围内</span>
+model_mixed <span class="o">=</span> auto_mixed_precision<span class="o">.</span><span class="f">auto_convert_mixed_precision</span>(
+    model, feed, validate_fn<span class="o">=</span><span class="k">lambda</span> r0, r1: np<span class="o">.</span><span class="f">allclose</span>(r0[<span class="n">0</span>], r1[<span class="n">0</span>], atol<span class="o">=</span><span class="n">1e-2</span>),
+)</pre></div>
+
+  <h2>§4　完整示例：小 CNN 走一遍全流水线，量化对比收益</h2>
+  <div class="callout ex">
+    <span class="ttl">目标</span>
+    把一个普通 CNN 走完 <strong>导出 → 简化 → FP16</strong> 三步，并测出每一步带来的<strong>体积变化、数值误差</strong>，
+    建立“这套操作到底省多少、掉多少精度”的直觉。这正是评分里 U（体积）与 W（精度别掉）的迷你预演。
+  </div>
+
+  <div class="pyblock"><div class="lang">PYTHON · 端到端流水线（可直接改成你的模型）</div><pre><span class="k">import</span> torch, onnx, os, numpy <span class="k">as</span> np
+<span class="k">import</span> onnxruntime <span class="k">as</span> ort
+<span class="k">from</span> onnxsim <span class="k">import</span> simplify
+<span class="k">from</span> onnxconverter_common <span class="k">import</span> float16
+<span class="k">import</span> torchvision<span class="o">.</span>models <span class="k">as</span> tvm
+
+<span class="k">def</span> <span class="f">size_mb</span>(p): <span class="k">return</span> os<span class="o">.</span>path<span class="o">.</span><span class="f">getsize</span>(p) <span class="o">/</span> <span class="n">1e6</span>
+
+<span class="c"># 0) 准备模型与样例输入</span>
+model <span class="o">=</span> tvm<span class="o">.</span><span class="f">resnet18</span>(weights<span class="o">=</span><span class="k">None</span>)<span class="o">.</span><span class="f">eval</span>()
+dummy <span class="o">=</span> torch<span class="o">.</span><span class="f">randn</span>(<span class="n">1</span>, <span class="n">3</span>, <span class="n">224</span>, <span class="n">224</span>)
+
+<span class="c"># 1) 导出 ONNX（FP32 基线）</span>
+torch<span class="o">.</span>onnx<span class="o">.</span><span class="f">export</span>(model, dummy, <span class="s">"r18.onnx"</span>, opset_version<span class="o">=</span><span class="n">17</span>,
+                  input_names<span class="o">=</span>[<span class="s">"input"</span>], output_names<span class="o">=</span>[<span class="s">"output"</span>])
+
+<span class="c"># 2) 图简化</span>
+m, ok <span class="o">=</span> <span class="f">simplify</span>(onnx<span class="o">.</span><span class="f">load</span>(<span class="s">"r18.onnx"</span>)); <span class="k">assert</span> ok
+onnx<span class="o">.</span><span class="f">save</span>(m, <span class="s">"r18_sim.onnx"</span>)
+
+<span class="c"># 3) FP16 转换</span>
+m16 <span class="o">=</span> float16<span class="o">.</span><span class="f">convert_float_to_float16</span>(onnx<span class="o">.</span><span class="f">load</span>(<span class="s">"r18_sim.onnx"</span>), keep_io_types<span class="o">=</span><span class="k">True</span>)
+onnx<span class="o">.</span><span class="f">save</span>(m16, <span class="s">"r18_fp16.onnx"</span>)
+
+<span class="c"># 4) 对比体积</span>
+<span class="k">for</span> p <span class="k">in</span> [<span class="s">"r18.onnx"</span>, <span class="s">"r18_sim.onnx"</span>, <span class="s">"r18_fp16.onnx"</span>]:
+    <span class="f">print</span>(<span class="s">f"{p:14s}  {size_mb(p):6.2f} MB"</span>)
+
+<span class="c"># 5) 对比数值误差：FP32 基线 vs FP16</span>
+x <span class="o">=</span> np<span class="o">.</span><span class="f">random</span><span class="o">.</span><span class="f">randn</span>(<span class="n">1</span>,<span class="n">3</span>,<span class="n">224</span>,<span class="n">224</span>)<span class="o">.</span><span class="f">astype</span>(np<span class="o">.</span>float32)
+o32 <span class="o">=</span> ort<span class="o">.</span><span class="f">InferenceSession</span>(<span class="s">"r18_sim.onnx"</span>)<span class="o">.</span><span class="f">run</span>(<span class="k">None</span>, {<span class="s">"input"</span>: x})[<span class="n">0</span>]
+o16 <span class="o">=</span> ort<span class="o">.</span><span class="f">InferenceSession</span>(<span class="s">"r18_fp16.onnx"</span>)<span class="o">.</span><span class="f">run</span>(<span class="k">None</span>, {<span class="s">"input"</span>: x})[<span class="n">0</span>]
+<span class="f">print</span>(<span class="s">"最大绝对误差:"</span>, np<span class="o">.</span><span class="f">abs</span>(o32 <span class="o">-</span> o16)<span class="o">.</span><span class="f">max</span>())</pre></div>
+
+  <div class="callout der">
+    <span class="ttl">你会看到的典型结果（量级感）</span>
+    <ul style="margin:4px 0;">
+      <li><strong>体积</strong>：FP32 约 45 MB → FP16 约 23 MB，<strong>≈ 减半</strong>（simplify 这步体积变化很小，它主要清理结构、为后续提速铺路）；</li>
+      <li><strong>显存</strong>：实际推理时权重 + 激活也大致随之减半（显存还取决于激活与中间缓冲，FP16 同样受益）；</li>
+      <li><strong>数值误差</strong>：最大绝对误差通常在 <code>1e-2 ~ 1e-3</code> 量级，分类 top-1 几乎不变——这就是“几乎不掉精度换一半空间”。</li>
+    </ul>
+  </div>
+
+  <div class="callout warn">
+    <span class="ttl">把误差量到“分数”上的提醒</span>
+    赛题的 W 看的是 RMSE/ACC 相对原模型有没有掉。FP16 在大多数视觉/回归任务里误差极小，但<strong>气象这种数值范围大、对小量级敏感的任务</strong>，
+    务必在<strong>验证集上实测 RMSE/ACC</strong>，对累加/归一类算子按需 block，必要时上 BF16 或自动混合精度。别凭“一般不掉”想当然。
+  </div>
+
+  <h2>§5　易错点汇总 · 一图流 · 赛题落点</h2>
+
+  <h3>⚠️ 易错点汇总</h3>
+  <ul>
+    <li><strong>忘了 <code>model.eval()</code></strong>：BN/Dropout 处于训练态，导出的图行为和推理不一致。</li>
+    <li><strong>dummy 输入选错路径</strong>：模型里有 <code>if</code> 分支时，trace 只记录走过的那条；用代表性输入，必要时改用 <code>dynamo</code>/脚本化。</li>
+    <li><strong>opset 太低</strong>：新算子导不出或被拆成一堆碎算子；建议 opset ≥ 13（常用 17）。</li>
+    <li><strong>simplify 的 <code>ok</code> 没校验</strong>：返回 <code>False</code> 还硬用，等于埋雷。</li>
+    <li><strong>FP16 直接全转</strong>：不 block 累加/归一算子，容易出 <code>NaN</code>/精度塌方——先小批验证再全量。</li>
+    <li><strong>只看体积不看显存</strong>：评分 U 里显存单独占 20 分，要实测推理峰值显存，而不仅是文件大小。</li>
+  </ul>
+
+  <div class="callout sum">
+    <span class="ttl">🎯 一图流小结：三件套各管一件事</span>
+    <strong>onnx（导出）</strong>：PyTorch 私房菜 → 标准菜谱（计算图），是优化的舞台。<br>
+    <strong>onnxsim（简化）</strong>：捋直绕路、折叠常量、去冗余 —— 改“结构”，不改数值，为提速与编译铺路。<br>
+    <strong>onnxconverter-common（FP16）</strong>：把记账单位 4 字节→2 字节 —— 改“精度位宽”，体积/显存约减半。<br>
+    顺序固定：<strong>导出 → simplify → FP16（敏感算子 block）→ 交给引擎编译</strong>。
+  </div>
+
+  <div class="callout link">
+    <span class="ttl">🔗 赛题落点：这一套在 pangu-weather + 国产加速卡上怎么拿分</span>
+    <ul style="margin:4px 0;">
+      <li><strong>U（轻量化 40 分）</strong>：FP16 把权重文件与显存占用<strong>直接砍半</strong>，是性价比最高的第一刀；onnxsim 顺手清掉导出冗余，让“模型大小”统计更干净。</li>
+      <li><strong>V（推理时长 20 分）</strong>：简化后的干净图 + FP16，交给国产卡的图推理引擎 <strong>MIGraphX</strong>（类 TensorRT）做算子融合与编译，延迟明显下降。</li>
+      <li><strong>W（精度 40 分）</strong>：气象数值敏感，必须在验证集实测 RMSE/ACC；把 <code>ReduceMean/LayerNorm/Softmax</code> 等按需 block，或用自动混合精度守住精度。</li>
+      <li><strong>组合预告</strong>：FP16 是“压精度位宽”，下一讲的剪枝是“去结构冗余”，第三讲的张量分解是“压低秩冗余”——三招正交，可叠加。</li>
+    </ul>
+  </div>
+
+  <div class="qz">
+    <h3>✏️ 思考题（下一讲开头给出完整解答）</h3>
+    <div class="q">FP16 与 BF16 都是 16 位、都比 FP32 省一半。为什么<strong>训练</strong>更常用 BF16，而<strong>部署推理</strong>更常用 FP16？请从“指数位/尾数位的预算分配”角度说清楚两者各自的取舍。</div>
+    <div class="q">某模型转 FP16 后，分类精度几乎不变，但其中一个 <code>Softmax</code> 之后接 <code>ReduceMean</code> 的分支输出出现了 <code>NaN</code>。请解释最可能的原因，并给出<strong>两种</strong>不同的修法（一种手工、一种自动）。</div>
+    <div class="q">评分里 U 同时看“模型大小”和“显存占用”。只做 FP16，这两项各自大约能改善多少？为什么显存的改善可能<strong>不完全等于</strong>权重文件的减半？（提示：想想推理时显存里除了权重还有什么。）</div>
+    <div class="q">在 pangu-weather 上，如果你只被允许做“导出 + simplify + FP16”这一套（不剪枝、不分解），你会按什么顺序操作、用哪些手段验证“精度没掉、确实变小变快”？请把流程和验证指标列成一个 checklist。</div>
+  </div>
+
+  <div class="foot">
+    <span>· 第一讲 / 共三讲 ·</span>
+    <span><a href="02.html">下一讲：Torch-Pruning 结构化剪枝 →</a></span>
+  </div>
+  <div class="printhint">提示：用浏览器「打印 / 另存为 PDF」即可得到干净的讲义（导航栏与本提示会自动隐藏）。</div>
+</div>
+</body>
+</html>

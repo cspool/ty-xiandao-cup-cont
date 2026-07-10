@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第三讲 · TensorLy：张量分解</title>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+:root{
+  --bg:#FBFAF7; --paper:#fffdf9; --text:#2B2B2B; --heading:#1F3A5F;
+  --accent:#B5651D; --code-bg:#f5f1e8; --border:#e7e2d8; --rule:#ded8cb;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0; background:var(--bg); color:var(--text);
+  font-family:"Noto Serif SC","Songti SC","Microsoft YaHei",Georgia,serif;
+  font-size:15.5px; line-height:1.85;}
+.topbar{position:sticky; top:0; z-index:50; background:rgba(31,58,95,.97);
+  color:#fff; padding:9px 22px; display:flex; gap:18px; align-items:center;
+  font-family:"Microsoft YaHei",sans-serif; font-size:13.5px; box-shadow:0 1px 8px rgba(0,0,0,.12);}
+.topbar b{font-size:14.5px;}
+.topbar a{color:#ffe; text-decoration:none; opacity:.85; border-bottom:1px dotted transparent;}
+.topbar a:hover{opacity:1; border-bottom-color:#ffe;}
+.topbar a.cur{opacity:1; border-bottom:2px solid #e8a04a; font-weight:700;}
+.topbar .sp{flex:1;}
+.wrap{max-width:880px; margin:0 auto; padding:34px 26px 90px;}
+.lec-no{font-family:"Microsoft YaHei",sans-serif; letter-spacing:.25em;
+  color:var(--accent); font-weight:700; font-size:13px;}
+h1{font-size:30px; line-height:1.3; margin:6px 0 6px; color:var(--heading);}
+.subtitle{color:#6b6256; font-size:15px; margin:0 0 8px;}
+h2{font-size:22px; color:var(--heading); margin:46px 0 14px; padding-left:13px;
+  border-left:6px solid var(--accent); line-height:1.35;}
+h3{font-size:17.5px; color:#26415e; margin:28px 0 8px;}
+h4{font-size:15.5px; margin:16px 0 6px; color:#3a3a3a;}
+p{margin:10px 0; text-align:justify;}
+ul,ol{margin:10px 0; padding-left:24px;}
+li{margin:6px 0;}
+strong,b{color:#1a1a1a;}
+code{font-family:"Cascadia Code","Consolas",monospace; background:var(--code-bg);
+  padding:1px 6px; border-radius:4px; font-size:13.5px; color:#7a3e12;}
+a{color:var(--accent);}
+.lead{font-size:16px; background:#fbf6ec; border:1px solid var(--border);
+  border-radius:10px; padding:14px 18px; margin:18px 0;}
+.goals{background:#f3f6fb; border:1px solid #d8e2f0; border-radius:12px;
+  padding:16px 20px; margin:20px 0;}
+.goals h3{margin:0 0 8px; color:var(--heading); font-size:16px;
+  font-family:"Microsoft YaHei",sans-serif;}
+.goals ul{margin:6px 0 0; padding-left:22px;} .goals li{margin:5px 0;}
+.callout{border-left:5px solid #999; border-radius:0 10px 10px 0; padding:13px 17px 13px 46px;
+  margin:16px 0; position:relative; background:#fff;}
+.callout::before{position:absolute; left:13px; top:11px; font-size:19px;
+  font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;}
+.callout .ttl{font-weight:700; font-family:"Microsoft YaHei",sans-serif;
+  display:block; margin-bottom:3px; font-size:14.5px;}
+.tip{border-color:#B5651D; background:#fdf4e9;} .tip::before{content:"💡";} .tip .ttl{color:#8a4a12;}
+.der{border-color:#2f6db0; background:#eef4fb;} .der::before{content:"📐";} .der .ttl{color:#23527e;}
+.warn{border-color:#c0392b; background:#fdeeec;} .warn::before{content:"⚠️";} .warn .ttl{color:#962d22;}
+.ex{border-color:#2e8b57; background:#edf7f0;} .ex::before{content:"✏️";} .ex .ttl{color:#236b43;}
+.sum{border-color:#7d5ba6; background:#f4f0fa;} .sum::before{content:"🎯";} .sum .ttl{color:#5d4382;}
+.rev{border-color:#8e44ad; background:#f6effa;} .rev::before{content:"🔁";} .rev .ttl{color:#6c3483;}
+.link{border-color:#1aaf5d; background:#ecfaf1;} .link::before{content:"🔗";} .link .ttl{color:#157f44;}
+.keybox{border:2px dashed var(--accent); border-radius:10px; background:#fffaf2;
+  padding:12px 18px; margin:16px 0;}
+.keybox .k{font-family:"Microsoft YaHei",sans-serif; font-weight:700; color:var(--accent);
+  font-size:13px; letter-spacing:.05em;}
+.pyblock{background:#ffffff; border:1px solid var(--border); border-radius:10px; margin:16px 0;
+  overflow:hidden; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; line-height:1.65;}
+.pyblock .lang{background:#f1ece2; color:#9a8f7c; padding:5px 14px; font-size:11.5px;
+  letter-spacing:.1em; font-family:"Microsoft YaHei",sans-serif; border-bottom:1px solid var(--border);}
+.pyblock pre{margin:0; padding:13px 16px; overflow-x:auto; color:#2b2b2b;}
+.pyblock .k{color:#7d2fa0;} .pyblock .s{color:#1f7a3a;} .pyblock .c{color:#9a9a9a; font-style:italic;}
+.pyblock .n{color:#b5651d;} .pyblock .f{color:#23527e;} .pyblock .o{color:#0a7a6a;}
+table{border-collapse:collapse; width:100%; margin:16px 0; font-size:14px;
+  font-family:"Microsoft YaHei",sans-serif;}
+th,td{border:1px solid var(--rule); padding:8px 11px; text-align:left; vertical-align:top;}
+th{background:#eef2f8; color:var(--heading); font-weight:700;}
+tbody tr:nth-child(even){background:#faf8f3;}
+figure{margin:18px 0; text-align:center;}
+figure img{max-width:100%; border:1px solid var(--border); border-radius:10px; background:#fff; padding:10px;}
+figcaption{font-size:12.5px; color:#7a7264; margin-top:7px; font-family:"Microsoft YaHei",sans-serif;}
+.svgfig{text-align:center; margin:18px 0;}
+.svgfig svg{max-width:100%; height:auto; background:#fff; border:1px solid var(--border); border-radius:10px; padding:8px;}
+.qz{background:#fbf4e9; border:1px solid #ecddc4; border-radius:12px;
+  padding:16px 20px; margin:22px 0; counter-reset:q;}
+.qz h3{margin-top:0; color:var(--accent); font-family:"Microsoft YaHei",sans-serif;}
+.qz .q{position:relative; padding:9px 0 9px 40px; border-top:1px dashed #e3d4b8;}
+.qz .q:first-of-type{border-top:none;}
+.qz .q::before{counter-increment:q; content:"Q" counter(q); position:absolute; left:0; top:9px;
+  background:var(--accent); color:#fff; font-family:"Microsoft YaHei",sans-serif;
+  font-size:12px; font-weight:700; padding:1px 8px; border-radius:5px;}
+.foot{margin-top:50px; padding-top:18px; border-top:2px solid var(--rule);
+  display:flex; justify-content:space-between; font-family:"Microsoft YaHei",sans-serif; font-size:13.5px;}
+.foot a{color:var(--accent); text-decoration:none; font-weight:600;}
+.printhint{text-align:center; color:#9a9182; font-size:12.5px; margin-top:14px;
+  font-family:"Microsoft YaHei",sans-serif;}
+small{color:#7a7264;}
+@page{margin:1.5cm;}
+@media print{
+  .topbar,.printhint{display:none!important;}
+  body{background:#fff; font-size:11pt; line-height:1.62;}
+  .wrap{max-width:none; padding:0;}
+  .callout,figure,.svgfig,table,.pyblock,.keybox,.goals,.qz{break-inside:avoid;}
+  h2,h3{break-after:avoid;}
+  .pyblock{background:#fff; border:1px solid #ccc;} .pyblock pre{color:#2b2b2b;}
+  .pyblock .lang{background:#f3f3f3; color:#777;}
+  .pyblock .k{color:#7d2fa0;} .pyblock .s{color:#1f7a3a;} .pyblock .c{color:#888;}
+  .pyblock .n{color:#b5651d;} .pyblock .f{color:#23527e;} .pyblock .o{color:#0a7;}
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <b>国产加速卡 · 模型轻量化三讲</b>
+  <a href="index.html">🏠 导航</a>
+  <span class="sp"></span>
+  <a href="01.html">① ONNX/FP16</a>
+  <a href="02.html">② 剪枝</a>
+  <a href="03.html" class="cur">③ 张量分解</a>
+</div>
+
+<div class="wrap">
+  <div class="lec-no">LECTURE 03</div>
+  <h1>TensorLy：张量分解</h1>
+  <p class="subtitle">把一个“大权重”拆成几块“小因子”的乘积 —— 用低秩近似压掉模型里的“低秩冗余”</p>
+
+  <div class="lead">
+    第一讲压“精度位宽”（FP16），第二讲去“结构冗余”（剪整通道）。这一讲压的是第三种冗余——<strong>低秩冗余</strong>：
+    一个看似很大的权重矩阵/张量，其“有效信息”往往集中在少数几个方向上。
+    就像一张高清大图能用少量主成分近似还原，权重也能用<strong>几个小因子的乘积</strong>来逼近。
+    <code>tensorly 0.9.0</code> 就是做这件事的工具：把大层换成几个小层，参数和算量大降、结果几乎不变。
+  </div>
+
+  <div class="goals">
+    <h3>🎯 本讲学完你会……</h3>
+    <ul>
+      <li>从 <strong>SVD / 矩阵低秩近似</strong> 出发，理解“为什么大矩阵能用小因子拼回来”；</li>
+      <li>说清 <strong>CP 分解</strong>（秩一之和）与 <strong>Tucker 分解</strong>（核张量 + 因子矩阵 = 高阶 SVD）的区别与适用；</li>
+      <li>知道怎么把一个 <strong>卷积/线性层分解成几个小层</strong> 并搭回 <code>nn.Module</code>，以及为何分解后要微调；</li>
+      <li>会用 TensorLy 的 <code>tucker</code> / <code>parafac</code> 做分解，并理解<strong>选秩</strong>是精度与压缩的核心旋钮；</li>
+      <li>把<strong>三讲串成一套组合拳</strong>：量化 + 剪枝 + 分解如何叠加去打 pangu-weather 的 U/V/W。</li>
+    </ul>
+  </div>
+
+  <h2>§0　上一讲回顾 &amp; 思考题全解</h2>
+
+  <div class="callout rev">
+    <span class="ttl">上一讲要点速览</span>
+    <ul style="margin:4px 0;">
+      <li><strong>结构化 vs 非结构化</strong>：只有结构化（删整通道/核/头）才在通用硬件上真减体积、显存、延迟；非结构化只是置零，形状没变。</li>
+      <li><strong>牵连问题</strong>：删一个输出通道会波及下游输入、BN、残差、拼接；<strong>DepGraph</strong> 自动把耦合层归成 <strong>Group</strong>，成组同删、图仍自洽。</li>
+      <li><strong>流程</strong>：定重要性（L1/L2/Taylor）→ 设剪枝率 → 保护输出层 → 迭代剪 + 微调 → 存/导出。剪枝率越高 U/V 越高、W 越险。</li>
+    </ul>
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">Q1 解答：非结构化 90% 置零为何不省、结构化 30% 却真省</span>
+    <strong>矩阵形状 vs 稀疏掩码：</strong>非结构化置零后，权重张量的<strong>形状一点没变</strong>，零只是“数值为 0”，仍占着存储；通用加速器（GPU/国产 DCU）执行的是<strong>稠密矩阵乘/卷积</strong>，会老老实实把 <code>0×x</code> 也乘一遍、加一遍——<strong>MAC 没省、显存没省</strong>。要利用稀疏，得有专门的稀疏算子 + 硬件（如特定 Tensor Core 的 2:4 稀疏），本赛题的通用国产卡上一般吃不到。<br>
+    <strong>结构化：</strong>删整通道会让权重张量的<strong>维度真的变小</strong>（如 <code>out_channels 64→44</code>），剩下的还是稠密小矩阵，<strong>在任何硬件上</strong>都少算少存。所以删 30% 通道≈真减 30%+，而 90% 零散零在稠密硬件上≈白删。
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">Q2 解答：残差处只剪 F(x) 分支会怎样、DepGraph 如何处理</span>
+    <code>y = F(x) + x</code> 要求两路<strong>通道数严格一致</strong>才能逐元素相加。若只把 <code>F(x)</code> 最后一层的输出通道剪掉一部分、不动 shortcut，两路通道数对不上，相加直接<strong>形状错误（崩）</strong>。<br>
+    <strong>DepGraph 的处理：</strong>它在建图时就识别出“这个加法把 <code>F</code> 的输出通道与 shortcut 通道、以及该 block 的输入通道全绑在一起”，于是把它们放进<strong>同一个 Group</strong>，剪枝时用<strong>同一组通道索引一起剪</strong>，保持相加合法。若 shortcut 是恒等映射（无卷积可剪），这种依赖往往会<strong>约束整组一致剪</strong>，否则该处通道不可单独剪。
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">Q3 解答：同样减半，一次性 vs 迭代式谁的最终精度更好</span>
+    通常<strong>迭代式更好</strong>。原因：① 每剪一点就微调，网络能<strong>逐步把被删通道的职责重新分配</strong>给保留通道，精度边掉边补；② 每一轮在“已适应的新网络”上<strong>重新评估重要性</strong>，避免一次性按原始排名误删那些“适应后其实重要”的通道。一次性从原始排名一刀切掉一大块，恢复更难。<br>
+    <strong>时间紧的折中：</strong>减少迭代步数（如 2~3 步），或一次性剪到中等比例 + 拉长微调，或对敏感模块用迭代、对冗余模块用一次性。
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">Q4 解答：pangu-weather 差异化剪枝方案</span>
+    <strong>① 为何不同比例：</strong>模块冗余度/敏感度不同。<strong>MLP/FFN 通常过参数化、冗余高</strong>，能扛更高比例（0.5）；<strong>注意力投影/头</strong>承载更独特的关系模式、对容量更敏感，比例要低（0.3）以保精度。<br>
+    <strong>② 必进 <code>ignored_layers</code>：</strong>最终<strong>预测头</strong>（输出气象变量/通道由任务定死，不能改输出维度）、<strong>patch embedding 输入投影</strong>（输入通道由气象变量数决定、改了就接不上数据接口）。<br>
+    <strong>③ 剪完到拿分还要：</strong>用正确样例输入 build DepGraph → 迭代剪 + 在 ERA5 上<strong>微调/蒸馏</strong> → 验证集逐指标盯 RMSE/ACC → 导出 ONNX → simplify → FP16（敏感算子 block）→ MIGraphX 上卡编译 → 实测<strong>体积、峰值显存、单样本时长、各指标 RMSE/ACC</strong>，按 Pareto 选点。
+  </div>
+
+  <h2>§1　先从矩阵说起：低秩近似与 SVD</h2>
+
+  <div class="callout tip">
+    <span class="ttl">开场类比：用“几个主成分”还原一张大图</span>
+    一张 1000×1000 的灰度图有一百万个像素，但如果它“纹理简单”，往往用几十个主成分（SVD 的前几个奇异值）就能还原得肉眼看不出差别——你只需存“几十个列向量 + 几十个行向量”，远比一百万个数少。
+    神经网络的权重矩阵也常常如此：<strong>它的“有效信息”集中在少数几个方向（低秩）</strong>，于是可以用几个小因子的乘积来逼近。这就是张量分解压缩的根。
+  </div>
+
+  <h3>SVD：任何矩阵都能拆成“旋转-拉伸-旋转”</h3>
+  <p>任意矩阵 \(M\) 都能做奇异值分解 \(M = U\,\Sigma\,V^{\top}\)，其中 \(\Sigma\) 对角线上的奇异值从大到小排列，代表各方向的“能量”。只保留前 \(r\) 个最大的奇异值，就得到<strong>最优的秩-\(r\) 近似</strong>：</p>
+
+  <figure>
+    <img src="assets/svd.svg" alt="SVD 几何意义：单位圆经 V* 旋转、Σ 拉伸、U 旋转" style="max-width:430px;">
+    <figcaption>SVD 的几何意义：\(M=U\Sigma V^{*}\) 把作用拆成“旋转 \(V^{*}\) → 沿主轴按奇异值拉伸 \(\Sigma\) → 旋转 \(U\)”。丢掉小奇异值＝丢掉次要方向。图：Wikimedia Commons，CC BY-SA</figcaption>
+  </figure>
+
+  <h3>把全连接层做低秩分解：参数从 \(mn\) 降到 \(r(m+n)\)</h3>
+  <p>一个线性层权重是 \(W\in\mathbb{R}^{m\times n}\)，有 \(mn\) 个参数。若它近似低秩，就可写成 \(W\approx U V\)，其中 \(U\in\mathbb{R}^{m\times r},\,V\in\mathbb{R}^{r\times n}\)：</p>
+
+  <div class="svgfig">
+  <svg viewBox="0 0 660 200" role="img" aria-label="低秩分解：W 约等于 U 乘 V">
+    <rect x="30" y="40" width="120" height="120" rx="6" fill="#cfe0f2" stroke="#2f6db0"/>
+    <text x="90" y="105" text-anchor="middle" font-size="26" fill="#1f3a5f" font-family="Georgia">W</text>
+    <text x="90" y="178" text-anchor="middle" font-size="13" fill="#555" font-family="sans-serif">m × n（mn 参数）</text>
+    <text x="178" y="108" text-anchor="middle" font-size="30" fill="#333">≈</text>
+    <rect x="210" y="40" width="40" height="120" rx="5" fill="#d8eede" stroke="#2e8b57"/>
+    <text x="230" y="106" text-anchor="middle" font-size="20" fill="#236b43" font-family="Georgia">U</text>
+    <text x="230" y="178" text-anchor="middle" font-size="12.5" fill="#555" font-family="sans-serif">m × r</text>
+    <text x="268" y="108" text-anchor="middle" font-size="24" fill="#333">·</text>
+    <rect x="285" y="90" width="120" height="40" rx="5" fill="#f4ddc4" stroke="#B5651D"/>
+    <text x="345" y="117" text-anchor="middle" font-size="20" fill="#8a4a12" font-family="Georgia">V</text>
+    <text x="345" y="150" text-anchor="middle" font-size="12.5" fill="#555" font-family="sans-serif">r × n</text>
+    <text x="500" y="92" text-anchor="middle" font-size="15" fill="#1f3a5f" font-family="sans-serif">r 很小时</text>
+    <text x="500" y="116" text-anchor="middle" font-size="16" fill="#c0392b" font-family="sans-serif">r(m+n) ≪ mn</text>
+  </svg>
+  </div>
+
+  <div class="keybox">
+    <span class="k">核心直觉</span>
+    一个大层换成<strong>两个小层串联</strong>（先降到 r 维，再升回去）。只要秩 \(r\) 取得比 \(m,n\) 小很多，参数量 \(mn\to r(m+n)\) 就大幅下降，计算量同理。<strong>秩 \(r\) 越小越省、但近似越糙</strong>——这是贯穿全讲的旋钮。
+  </div>
+
+  <h2>§2　从矩阵到张量：CP 分解与 Tucker 分解</h2>
+
+  <div class="callout tip">
+    <span class="ttl">为什么需要“张量”分解</span>
+    卷积层的权重不是二维矩阵，而是<strong>四维张量</strong> \([\text{输出通道}\times\text{输入通道}\times k_h\times k_w]\)；注意力里也有高维权重。
+    矩阵的低秩只有“一个秩”，而高维张量有<strong>多个模（mode）、每个模都可以低秩</strong>。CP 和 Tucker 就是把矩阵 SVD 的思想推广到张量上的两种方式。
+  </div>
+
+  <h3>CP 分解：把张量写成“一堆秩一张量之和”</h3>
+  <p>CP（CANDECOMP/PARAFAC）把一个张量近似成 \(R\) 个<strong>秩一张量</strong>之和，每个秩一张量是几个向量的外积：</p>
+  <div class="keybox">
+    <span class="k">CP 分解</span>
+    \[ \mathcal{X} \;\approx\; \sum_{r=1}^{R} \, a_r \circ b_r \circ c_r \]
+    \(R\) 就是 CP 秩；\(a_r,b_r,c_r\) 是各模上的因子向量，\(\circ\) 是外积。
+  </div>
+  <div class="svgfig">
+  <svg viewBox="0 0 680 170" role="img" aria-label="CP 分解：张量约等于若干秩一项之和">
+    <rect x="20" y="45" width="86" height="86" rx="6" fill="#cfe0f2" stroke="#2f6db0"/>
+    <polygon points="20,45 40,28 126,28 106,45" fill="#bcd3ec" stroke="#2f6db0"/>
+    <polygon points="106,45 126,28 126,114 106,131" fill="#aac6e4" stroke="#2f6db0"/>
+    <text x="63" y="95" text-anchor="middle" font-size="22" fill="#1f3a5f" font-family="Georgia">𝒳</text>
+    <text x="150" y="92" text-anchor="middle" font-size="26" fill="#333">≈</text>
+    <!-- term 1 -->
+    <rect x="180" y="55" width="14" height="70" fill="#d8eede" stroke="#2e8b57"/>
+    <rect x="198" y="80" width="56" height="14" fill="#f4ddc4" stroke="#B5651D"/>
+    <rect x="200" y="48" width="40" height="12" transform="skewX(-30)" fill="#e8d4ef" stroke="#7d5ba6"/>
+    <text x="217" y="146" text-anchor="middle" font-size="12.5" fill="#555" font-family="sans-serif">a₁∘b₁∘c₁</text>
+    <text x="278" y="92" text-anchor="middle" font-size="22" fill="#333">+</text>
+    <!-- term 2 -->
+    <rect x="300" y="55" width="14" height="70" fill="#d8eede" stroke="#2e8b57"/>
+    <rect x="318" y="80" width="56" height="14" fill="#f4ddc4" stroke="#B5651D"/>
+    <rect x="320" y="48" width="40" height="12" transform="skewX(-30)" fill="#e8d4ef" stroke="#7d5ba6"/>
+    <text x="337" y="146" text-anchor="middle" font-size="12.5" fill="#555" font-family="sans-serif">a₂∘b₂∘c₂</text>
+    <text x="398" y="92" text-anchor="middle" font-size="22" fill="#333">+ ⋯ +</text>
+    <!-- term R -->
+    <rect x="470" y="55" width="14" height="70" fill="#d8eede" stroke="#2e8b57"/>
+    <rect x="488" y="80" width="56" height="14" fill="#f4ddc4" stroke="#B5651D"/>
+    <rect x="490" y="48" width="40" height="12" transform="skewX(-30)" fill="#e8d4ef" stroke="#7d5ba6"/>
+    <text x="507" y="146" text-anchor="middle" font-size="12.5" fill="#555" font-family="sans-serif">a_R∘b_R∘c_R</text>
+    <text x="600" y="80" text-anchor="middle" font-size="14" fill="#c0392b" font-family="sans-serif">R 个秩一项</text>
+    <text x="600" y="100" text-anchor="middle" font-size="13" fill="#555" font-family="sans-serif">R 越小越省</text>
+  </svg>
+  </div>
+
+  <h3>Tucker 分解：一个“核张量” + 每个模一个“因子矩阵”</h3>
+  <p>Tucker 更通用：把张量压成一个<strong>小核张量</strong> \(\mathcal{G}\)，再在每个模上乘一个<strong>因子矩阵</strong>。它正是 <strong>SVD 的高阶推广（高阶 SVD / HOSVD）</strong>，每个模有各自的秩 \((R_1,R_2,R_3)\)：</p>
+  <div class="keybox">
+    <span class="k">Tucker 分解</span>
+    \[ \mathcal{X} \;\approx\; \mathcal{G} \times_1 A \times_2 B \times_3 C \]
+    \(\mathcal{G}\in\mathbb{R}^{R_1\times R_2\times R_3}\) 是核，\(A,B,C\) 是各模的因子矩阵；秩是一个<strong>向量</strong> \((R_1,R_2,R_3)\)。
+  </div>
+  <div class="svgfig">
+  <svg viewBox="0 0 660 180" role="img" aria-label="Tucker 分解：核张量乘各模因子矩阵">
+    <rect x="20" y="50" width="86" height="86" rx="6" fill="#cfe0f2" stroke="#2f6db0"/>
+    <polygon points="20,50 40,33 126,33 106,50" fill="#bcd3ec" stroke="#2f6db0"/>
+    <polygon points="106,50 126,33 126,119 106,136" fill="#aac6e4" stroke="#2f6db0"/>
+    <text x="63" y="100" text-anchor="middle" font-size="22" fill="#1f3a5f" font-family="Georgia">𝒳</text>
+    <text x="150" y="98" text-anchor="middle" font-size="26" fill="#333">≈</text>
+    <!-- core -->
+    <rect x="185" y="72" width="44" height="44" rx="4" fill="#f4ddc4" stroke="#B5651D"/>
+    <polygon points="185,72 197,62 241,62 229,72" fill="#eccfa8" stroke="#B5651D"/>
+    <polygon points="229,72 241,62 241,106 229,116" fill="#e4c190" stroke="#B5651D"/>
+    <text x="207" y="100" text-anchor="middle" font-size="16" fill="#8a4a12" font-family="Georgia">𝒢</text>
+    <text x="207" y="150" text-anchor="middle" font-size="11.5" fill="#555" font-family="sans-serif">核 R₁×R₂×R₃</text>
+    <text x="262" y="98" text-anchor="middle" font-size="16" fill="#333">×₁</text>
+    <rect x="282" y="62" width="34" height="64" rx="4" fill="#d8eede" stroke="#2e8b57"/>
+    <text x="299" y="100" text-anchor="middle" font-size="16" fill="#236b43" font-family="Georgia">A</text>
+    <text x="338" y="98" text-anchor="middle" font-size="16" fill="#333">×₂</text>
+    <rect x="358" y="62" width="34" height="64" rx="4" fill="#d8eede" stroke="#2e8b57"/>
+    <text x="375" y="100" text-anchor="middle" font-size="16" fill="#236b43" font-family="Georgia">B</text>
+    <text x="414" y="98" text-anchor="middle" font-size="16" fill="#333">×₃</text>
+    <rect x="434" y="62" width="34" height="64" rx="4" fill="#d8eede" stroke="#2e8b57"/>
+    <text x="451" y="100" text-anchor="middle" font-size="16" fill="#236b43" font-family="Georgia">C</text>
+    <text x="560" y="86" text-anchor="middle" font-size="13.5" fill="#c0392b" font-family="sans-serif">核越小、因子越窄</text>
+    <text x="560" y="106" text-anchor="middle" font-size="13.5" fill="#555" font-family="sans-serif">压缩越狠</text>
+  </svg>
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">CP vs Tucker，怎么选</span>
+    <strong>CP</strong>：只有一个秩 \(R\)，分解最“瘦”、压缩比可以很高，但秩选取与数值稳定性较难，激进时精度更易掉。<br>
+    <strong>Tucker</strong>：每个模独立选秩，更灵活、更稳，精度损失通常更小，是 CNN 卷积层压缩里最常用的一种（CP 是 Tucker 在“核张量为超对角”时的特例）。<br>
+    实践上，<strong>卷积层多用 Tucker（对输入/输出通道两个模降秩），并配合 1×1 卷积换通道数</strong>——这正是下图展示的做法。
+  </div>
+
+  <figure>
+    <img src="assets/cp_conv.png" alt="把一个标准卷积层分解成几个更小的卷积层">
+    <figcaption>分解的落地形态：一个标准卷积层被拆成<strong>几个更小的卷积串联</strong>（如 1×1 降维 → 小卷积 → 1×1 升维），总参数与计算量下降。图：Lebedev et al. 经 jacobgil 教学博客整理</figcaption>
+  </figure>
+
+  <h2>§3　选秩、替换层与微调：把分解真正用起来</h2>
+
+  <div class="callout tip">
+    <span class="ttl">三步走</span>
+    分解压缩在工程上就是：<strong>① 选秩 → ② 把原层替换成分解后的几个小层 → ③ 微调回补精度</strong>。
+  </div>
+
+  <h3>① 选秩：压缩与精度的总开关</h3>
+  <ul>
+    <li>秩取太大：几乎不压缩；秩取太小：参数省很多但近似误差大、精度崩。</li>
+    <li>可手工设，也可用 <strong>VBMF（变分贝叶斯矩阵分解）</strong> 等方法<strong>自动估计每个模的合适秩</strong>，省去逐层试。</li>
+    <li>实操常按“保留 X% 能量（奇异值平方和占比）”来反推秩，兼顾压缩与精度。</li>
+  </ul>
+
+  <h3>② 替换层：分解结果要搭回 nn.Module</h3>
+  <p>分解只是得到了几个因子张量，你得把它们<strong>组装成等价的小层串联</strong>（用因子初始化新层的权重），替换掉原来的大层。TensorLy 负责“算出因子”，PyTorch 负责“搭成层”。</p>
+
+  <h3>③ 微调：和剪枝一样，分解后几乎必做</h3>
+  <div class="callout warn">
+    <span class="ttl">分解 ≠ 等价，是近似</span>
+    低秩分解是<strong>有损近似</strong>，替换后精度会掉一些。<strong>必须用训练/验证数据微调</strong>，让新因子层把误差学回来。和上一讲的剪枝完全一样：<strong>压缩 + 微调是一套连招</strong>。
+  </div>
+
+  <h2>§4　TensorLy API：分解一个权重张量</h2>
+
+  <div class="callout der">
+    <span class="ttl">两个主力函数</span>
+    <code>tensorly.decomposition.tucker</code>（Tucker 分解）和 <code>parafac</code>（CP 分解）。输入一个张量 + 目标秩，返回因子；用因子能重建出近似张量，对比误差。
+  </div>
+
+  <div class="pyblock"><div class="lang">PYTHON · 用 TensorLy 做分解</div><pre><span class="k">import</span> tensorly <span class="k">as</span> tl
+<span class="k">from</span> tensorly.decomposition <span class="k">import</span> tucker, parafac
+<span class="k">import</span> torch
+
+tl<span class="o">.</span><span class="f">set_backend</span>(<span class="s">"pytorch"</span>)            <span class="c"># 让 tensorly 直接吃/吐 torch 张量</span>
+
+W <span class="o">=</span> conv<span class="o">.</span>weight<span class="o">.</span>data            <span class="c"># 卷积权重: [out, in, kh, kw]</span>
+
+<span class="c"># —— Tucker：对 out、in 两个模降秩（核保留 kh、kw 不动）——</span>
+core, factors <span class="o">=</span> <span class="f">tucker</span>(W, rank<span class="o">=</span>[<span class="n">16</span>, <span class="n">8</span>, W<span class="o">.</span>shape[<span class="n">2</span>], W<span class="o">.</span>shape[<span class="n">3</span>]])
+W_approx <span class="o">=</span> tl<span class="o">.</span>tucker_to_tensor((core, factors))
+<span class="f">print</span>(<span class="s">"相对误差:"</span>, (tl<span class="o">.</span><span class="f">norm</span>(W <span class="o">-</span> W_approx) <span class="o">/</span> tl<span class="o">.</span><span class="f">norm</span>(W))<span class="o">.</span><span class="f">item</span>())
+
+<span class="c"># —— CP：秩 R 的秩一之和 ——</span>
+weights, cp_factors <span class="o">=</span> <span class="f">parafac</span>(W, rank<span class="o">=</span><span class="n">24</span>)
+W_cp <span class="o">=</span> tl<span class="o">.</span><span class="f">cp_to_tensor</span>((weights, cp_factors))</pre></div>
+
+  <div class="callout der">
+    <span class="ttl">把 Tucker 因子搭成“三个小卷积”</span>
+    对卷积做 Tucker-2（只降 in/out 两个模）后，等价于：<strong>1×1 卷积（把输入通道降到 \(R_2\)）→ 原大小卷积（但通道更少）→ 1×1 卷积（把通道升回 out）</strong>。
+    用分解得到的因子去初始化这三个新卷积的权重，再替换原层即可。<code>tensorly-torch</code> 还提供了 <code>FactorizedConv</code> 等现成的可分解层，能少写很多手工组装代码。
+  </div>
+
+  <h2>§5　完整示例：卷积层 Tucker 分解，量化收益</h2>
+
+  <div class="callout ex">
+    <span class="ttl">目标</span>
+    取一个卷积层，做 Tucker 分解 → 组装成三个小卷积 → 替换 → 对比<strong>参数量、近似误差</strong>，并明确“接下来要微调”。
+  </div>
+
+  <div class="pyblock"><div class="lang">PYTHON · 分解并替换一个卷积层</div><pre><span class="k">import</span> torch, torch.nn <span class="k">as</span> nn, tensorly <span class="k">as</span> tl
+<span class="k">from</span> tensorly.decomposition <span class="k">import</span> <span class="f">partial_tucker</span>
+tl<span class="o">.</span><span class="f">set_backend</span>(<span class="s">"pytorch"</span>)
+
+<span class="k">def</span> <span class="f">tucker_decompose_conv</span>(conv, r_in, r_out):
+    W <span class="o">=</span> conv<span class="o">.</span>weight<span class="o">.</span>data                       <span class="c"># [out, in, kh, kw]</span>
+    <span class="c"># 只对模 0(out)、模 1(in) 降秩</span>
+    core, [U_out, U_in] <span class="o">=</span> <span class="f">partial_tucker</span>(W, modes<span class="o">=</span>[<span class="n">0</span>, <span class="n">1</span>], rank<span class="o">=</span>[r_out, r_in])
+    o, i, kh, kw <span class="o">=</span> W<span class="o">.</span>shape
+    <span class="c"># ① 1x1：in -> r_in</span>
+    first <span class="o">=</span> nn<span class="o">.</span><span class="f">Conv2d</span>(i, r_in, <span class="n">1</span>, bias<span class="o">=</span><span class="k">False</span>)
+    <span class="c"># ② 小卷积：r_in -> r_out（保留 kh,kw 与 stride/padding）</span>
+    mid <span class="o">=</span> nn<span class="o">.</span><span class="f">Conv2d</span>(r_in, r_out, (kh, kw), stride<span class="o">=</span>conv<span class="o">.</span>stride,
+                    padding<span class="o">=</span>conv<span class="o">.</span>padding, bias<span class="o">=</span><span class="k">False</span>)
+    <span class="c"># ③ 1x1：r_out -> out（带原 bias）</span>
+    last <span class="o">=</span> nn<span class="o">.</span><span class="f">Conv2d</span>(r_out, o, <span class="n">1</span>, bias<span class="o">=</span><span class="k">True</span>)
+    <span class="c"># 用分解因子初始化三层权重</span>
+    first<span class="o">.</span>weight<span class="o">.</span>data <span class="o">=</span> U_in<span class="o">.</span><span class="f">t</span>()<span class="o">.</span><span class="f">unsqueeze</span>(<span class="o">-</span><span class="n">1</span>)<span class="o">.</span><span class="f">unsqueeze</span>(<span class="o">-</span><span class="n">1</span>)
+    mid<span class="o">.</span>weight<span class="o">.</span>data <span class="o">=</span> core
+    last<span class="o">.</span>weight<span class="o">.</span>data <span class="o">=</span> U_out<span class="o">.</span><span class="f">unsqueeze</span>(<span class="o">-</span><span class="n">1</span>)<span class="o">.</span><span class="f">unsqueeze</span>(<span class="o">-</span><span class="n">1</span>)
+    <span class="k">if</span> conv<span class="o">.</span>bias <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>: last<span class="o">.</span>bias<span class="o">.</span>data <span class="o">=</span> conv<span class="o">.</span>bias<span class="o">.</span>data
+    <span class="k">return</span> nn<span class="o">.</span><span class="f">Sequential</span>(first, mid, last)
+
+conv <span class="o">=</span> nn<span class="o">.</span><span class="f">Conv2d</span>(<span class="n">256</span>, <span class="n">256</span>, <span class="n">3</span>, padding<span class="o">=</span><span class="n">1</span>)
+p0 <span class="o">=</span> <span class="f">sum</span>(p<span class="o">.</span><span class="f">numel</span>() <span class="k">for</span> p <span class="k">in</span> conv<span class="o">.</span><span class="f">parameters</span>())
+block <span class="o">=</span> <span class="f">tucker_decompose_conv</span>(conv, r_in<span class="o">=</span><span class="n">64</span>, r_out<span class="o">=</span><span class="n">64</span>)
+p1 <span class="o">=</span> <span class="f">sum</span>(p<span class="o">.</span><span class="f">numel</span>() <span class="k">for</span> p <span class="k">in</span> block<span class="o">.</span><span class="f">parameters</span>())
+<span class="f">print</span>(<span class="s">f"参数量: {p0} -> {p1}  (压到 {p1/p0:.1%})"</span>)
+<span class="c"># 之后：把 block 替换进模型对应位置，再在数据上微调几个 epoch</span></pre></div>
+
+  <div class="callout der">
+    <span class="ttl">你会看到的典型结果（量级感）</span>
+    一个 <code>256×256×3×3 ≈ 59 万</code> 参数的卷积，降到 <code>r_in=r_out=64</code> 后，参数大致压到原来的<strong>三到四成</strong>（具体随秩而变）；MACs 同步下降。
+    刚替换时精度会掉，<strong>微调后基本回补</strong>。秩越小压得越狠、回补越难——又回到那个核心旋钮。
+  </div>
+
+  <h2>§6　易错点 · 三讲总收尾 · 赛题落点</h2>
+
+  <h3>⚠️ 易错点汇总</h3>
+  <ul>
+    <li><strong>秩选太小</strong>：参数省很多但精度崩、微调也救不回——从保守的秩开始、用 VBMF 辅助。</li>
+    <li><strong>分解完不微调</strong>：低秩是近似，不微调精度就一直掉。</li>
+    <li><strong>所有层都分解</strong>：1×1 卷积、很小的层分解收益小甚至变多，挑“大而冗余”的层下手。</li>
+    <li><strong>因子组装时维度/转置搞错</strong>：搭回 nn.Module 时务必核对各因子的形状与卷积权重布局，先用“重建误差”自检再替换。</li>
+    <li><strong>backend 没设</strong>：忘了 <code>tl.set_backend("pytorch")</code>，会在 numpy/torch 之间反复转、还可能断开计算图。</li>
+  </ul>
+
+  <div class="callout sum">
+    <span class="ttl">🎯 三讲总收尾：三种冗余、三把刀、一套组合拳</span>
+    <strong>① FP16（第一讲）压“精度位宽”</strong>：4 字节→2 字节，体积/显存≈减半，几乎不改结构，最该先做。<br>
+    <strong>② 剪枝（第二讲）去“结构冗余”</strong>：删整通道/头，DepGraph 保证成组同删，真减体积/显存/延迟。<br>
+    <strong>③ 张量分解（第三讲）压“低秩冗余”</strong>：把大层拆成小因子串联，按秩调压缩比。<br>
+    三者<strong>正交、可叠加</strong>，且都遵循同一条规律：<em>压缩换来 U/V，精度（W）靠微调/蒸馏守住，关键是找 Pareto 平衡点。</em>
+  </div>
+
+  <div class="callout link">
+    <span class="ttl">🔗 赛题落点：在 pangu-weather 上的组合策略</span>
+    <ul style="margin:4px 0;">
+      <li><strong>分解哪里</strong>：pangu-weather 的注意力 Q/K/V/O 投影、MLP 的大线性层，都是低秩分解的好目标；卷积/patch 处用 Tucker。</li>
+      <li><strong>推荐管线</strong>：<strong>剪枝(去结构冗余) → 张量分解(压低秩冗余) → 微调/蒸馏回补 → 导出 ONNX → simplify → FP16(压位宽) → MIGraphX 编译</strong>。压缩相乘、精度集中回补一次。</li>
+      <li><strong>对应分数</strong>：剪枝+分解主攻 U（体积/显存）与 V（速度）；FP16 再叠一刀；全程在 ERA5 验证集盯 15 个气象指标的 RMSE/ACC 守 W。</li>
+      <li><strong>调参思路</strong>：把“剪枝率 / 分解秩 / 是否 FP16”当成一组旋钮，扫出“压缩率 × 精度”的 Pareto 前沿，挑 U+V+W 总分最高的点。</li>
+    </ul>
+  </div>
+
+  <div class="qz">
+    <h3>✏️ 思考题（综合·收尾）</h3>
+    <div class="q">同样想把一个 \(m\times n\) 线性层压到“参数减半”，用<strong>低秩分解</strong>该怎么选秩 \(r\)？写出 \(r\) 与 \(m,n\) 的关系式，并说明为什么当 \(r\) 接近 \(\min(m,n)/2\) 时分解可能“不划算”。</div>
+    <div class="q">CP 和 Tucker 都能压卷积层。若你追求<strong>极高压缩比</strong>但能接受多花精力调稳定性，选哪个？若你想要<strong>每个模独立控秩、过程更稳</strong>，又选哪个？分别说明理由。</div>
+    <div class="q">把三讲连起来：给 pangu-weather 设计一条“剪枝 + 分解 + FP16”的完整流水线。请明确<strong>每一步的先后顺序、为什么这个顺序、各步主要影响 U/V/W 的哪一项</strong>，以及精度回补放在流水线的哪个位置最合理。</div>
+    <div class="q">评分里 \(W=\frac1N\sum_t[\max\{(\frac{\text{原RMSE}_t}{\text{轻RMSE}_t})^l,1\}+\max\{(\frac{\text{轻ACC}_t}{\text{原ACC}_t})^m,1\}]\times20\)。如果你的压缩让大多数指标精度持平、但<strong>个别气压层指标明显变差</strong>，你会怎样调整剪枝率/分解秩/FP16 的 block 列表，来既保住总分又不牺牲太多压缩？</div>
+  </div>
+
+
+  <div class="foot">
+    <span><a href="02.html">← 上一讲：Torch-Pruning 剪枝</a></span>
+    <span><a href="01.html">回到第一讲 ⟲</a></span>
+  </div>
+  <div class="printhint">提示：用浏览器「打印 / 另存为 PDF」即可得到干净的讲义（导航栏与本提示会自动隐藏）。</div>
+</div>
+</body>
+</html>

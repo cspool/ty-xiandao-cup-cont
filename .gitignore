@@ -1,0 +1,40 @@
+# Local and remote environment files
+.env
+.env.*
+config.env
+*.local
+
+# Secrets and SSH material
+.ssh/
+*.pem
+id_rsa
+id_ed25519
+authorized_keys
+known_hosts
+.ai_user_info/
+
+# Mounted remote home and runtime data
+remote-home/
+testdata/
+goal_runs/
+accuracy_debug/
+profile_runs/
+xiandao_logs/
+
+# Build outputs and dependencies
+build/
+dist/
+.deps/
+*.whl
+*.egg-info/
+__pycache__/
+*.py[cod]
+node_modules/
+.venv/
+venv/
+
+# Caches and temporary files
+.cache/
+.local/
+tmp/
+*.hsaco

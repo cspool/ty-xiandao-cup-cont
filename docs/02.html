@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二讲 · Torch-Pruning：结构化剪枝</title>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+:root{
+  --bg:#FBFAF7; --paper:#fffdf9; --text:#2B2B2B; --heading:#1F3A5F;
+  --accent:#B5651D; --code-bg:#f5f1e8; --border:#e7e2d8; --rule:#ded8cb;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0; background:var(--bg); color:var(--text);
+  font-family:"Noto Serif SC","Songti SC","Microsoft YaHei",Georgia,serif;
+  font-size:15.5px; line-height:1.85;}
+.topbar{position:sticky; top:0; z-index:50; background:rgba(31,58,95,.97);
+  color:#fff; padding:9px 22px; display:flex; gap:18px; align-items:center;
+  font-family:"Microsoft YaHei",sans-serif; font-size:13.5px; box-shadow:0 1px 8px rgba(0,0,0,.12);}
+.topbar b{font-size:14.5px;}
+.topbar a{color:#ffe; text-decoration:none; opacity:.85; border-bottom:1px dotted transparent;}
+.topbar a:hover{opacity:1; border-bottom-color:#ffe;}
+.topbar a.cur{opacity:1; border-bottom:2px solid #e8a04a; font-weight:700;}
+.topbar .sp{flex:1;}
+.wrap{max-width:880px; margin:0 auto; padding:34px 26px 90px;}
+.lec-no{font-family:"Microsoft YaHei",sans-serif; letter-spacing:.25em;
+  color:var(--accent); font-weight:700; font-size:13px;}
+h1{font-size:30px; line-height:1.3; margin:6px 0 6px; color:var(--heading);}
+.subtitle{color:#6b6256; font-size:15px; margin:0 0 8px;}
+h2{font-size:22px; color:var(--heading); margin:46px 0 14px; padding-left:13px;
+  border-left:6px solid var(--accent); line-height:1.35;}
+h3{font-size:17.5px; color:#26415e; margin:28px 0 8px;}
+h4{font-size:15.5px; margin:16px 0 6px; color:#3a3a3a;}
+p{margin:10px 0; text-align:justify;}
+ul,ol{margin:10px 0; padding-left:24px;}
+li{margin:6px 0;}
+strong,b{color:#1a1a1a;}
+code{font-family:"Cascadia Code","Consolas",monospace; background:var(--code-bg);
+  padding:1px 6px; border-radius:4px; font-size:13.5px; color:#7a3e12;}
+a{color:var(--accent);}
+.lead{font-size:16px; background:#fbf6ec; border:1px solid var(--border);
+  border-radius:10px; padding:14px 18px; margin:18px 0;}
+.goals{background:#f3f6fb; border:1px solid #d8e2f0; border-radius:12px;
+  padding:16px 20px; margin:20px 0;}
+.goals h3{margin:0 0 8px; color:var(--heading); font-size:16px;
+  font-family:"Microsoft YaHei",sans-serif;}
+.goals ul{margin:6px 0 0; padding-left:22px;} .goals li{margin:5px 0;}
+.callout{border-left:5px solid #999; border-radius:0 10px 10px 0; padding:13px 17px 13px 46px;
+  margin:16px 0; position:relative; background:#fff;}
+.callout::before{position:absolute; left:13px; top:11px; font-size:19px;
+  font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;}
+.callout .ttl{font-weight:700; font-family:"Microsoft YaHei",sans-serif;
+  display:block; margin-bottom:3px; font-size:14.5px;}
+.tip{border-color:#B5651D; background:#fdf4e9;} .tip::before{content:"💡";} .tip .ttl{color:#8a4a12;}
+.der{border-color:#2f6db0; background:#eef4fb;} .der::before{content:"📐";} .der .ttl{color:#23527e;}
+.warn{border-color:#c0392b; background:#fdeeec;} .warn::before{content:"⚠️";} .warn .ttl{color:#962d22;}
+.ex{border-color:#2e8b57; background:#edf7f0;} .ex::before{content:"✏️";} .ex .ttl{color:#236b43;}
+.sum{border-color:#7d5ba6; background:#f4f0fa;} .sum::before{content:"🎯";} .sum .ttl{color:#5d4382;}
+.rev{border-color:#8e44ad; background:#f6effa;} .rev::before{content:"🔁";} .rev .ttl{color:#6c3483;}
+.link{border-color:#1aaf5d; background:#ecfaf1;} .link::before{content:"🔗";} .link .ttl{color:#157f44;}
+.keybox{border:2px dashed var(--accent); border-radius:10px; background:#fffaf2;
+  padding:12px 18px; margin:16px 0;}
+.keybox .k{font-family:"Microsoft YaHei",sans-serif; font-weight:700; color:var(--accent);
+  font-size:13px; letter-spacing:.05em;}
+.pyblock{background:#ffffff; border:1px solid var(--border); border-radius:10px; margin:16px 0;
+  overflow:hidden; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; line-height:1.65;}
+.pyblock .lang{background:#f1ece2; color:#9a8f7c; padding:5px 14px; font-size:11.5px;
+  letter-spacing:.1em; font-family:"Microsoft YaHei",sans-serif; border-bottom:1px solid var(--border);}
+.pyblock pre{margin:0; padding:13px 16px; overflow-x:auto; color:#2b2b2b;}
+.pyblock .k{color:#7d2fa0;} .pyblock .s{color:#1f7a3a;} .pyblock .c{color:#9a9a9a; font-style:italic;}
+.pyblock .n{color:#b5651d;} .pyblock .f{color:#23527e;} .pyblock .o{color:#0a7a6a;}
+table{border-collapse:collapse; width:100%; margin:16px 0; font-size:14px;
+  font-family:"Microsoft YaHei",sans-serif;}
+th,td{border:1px solid var(--rule); padding:8px 11px; text-align:left; vertical-align:top;}
+th{background:#eef2f8; color:var(--heading); font-weight:700;}
+tbody tr:nth-child(even){background:#faf8f3;}
+figure{margin:18px 0; text-align:center;}
+figure img{max-width:100%; border:1px solid var(--border); border-radius:10px; background:#fff; padding:10px;}
+figcaption{font-size:12.5px; color:#7a7264; margin-top:7px; font-family:"Microsoft YaHei",sans-serif;}
+.qz{background:#fbf4e9; border:1px solid #ecddc4; border-radius:12px;
+  padding:16px 20px; margin:22px 0; counter-reset:q;}
+.qz h3{margin-top:0; color:var(--accent); font-family:"Microsoft YaHei",sans-serif;}
+.qz .q{position:relative; padding:9px 0 9px 40px; border-top:1px dashed #e3d4b8;}
+.qz .q:first-of-type{border-top:none;}
+.qz .q::before{counter-increment:q; content:"Q" counter(q); position:absolute; left:0; top:9px;
+  background:var(--accent); color:#fff; font-family:"Microsoft YaHei",sans-serif;
+  font-size:12px; font-weight:700; padding:1px 8px; border-radius:5px;}
+.foot{margin-top:50px; padding-top:18px; border-top:2px solid var(--rule);
+  display:flex; justify-content:space-between; font-family:"Microsoft YaHei",sans-serif; font-size:13.5px;}
+.foot a{color:var(--accent); text-decoration:none; font-weight:600;}
+.printhint{text-align:center; color:#9a9182; font-size:12.5px; margin-top:14px;
+  font-family:"Microsoft YaHei",sans-serif;}
+small{color:#7a7264;}
+@page{margin:1.5cm;}
+@media print{
+  .topbar,.printhint{display:none!important;}
+  body{background:#fff; font-size:11pt; line-height:1.62;}
+  .wrap{max-width:none; padding:0;}
+  .callout,figure,table,.pyblock,.keybox,.goals,.qz{break-inside:avoid;}
+  h2,h3{break-after:avoid;}
+  .pyblock{background:#fff; border:1px solid #ccc;} .pyblock pre{color:#2b2b2b;}
+  .pyblock .lang{background:#f3f3f3; color:#777;}
+  .pyblock .k{color:#7d2fa0;} .pyblock .s{color:#1f7a3a;} .pyblock .c{color:#888;}
+  .pyblock .n{color:#b5651d;} .pyblock .f{color:#23527e;} .pyblock .o{color:#0a7;}
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <b>国产加速卡 · 模型轻量化三讲</b>
+  <a href="index.html">🏠 导航</a>
+  <span class="sp"></span>
+  <a href="01.html">① ONNX/FP16</a>
+  <a href="02.html" class="cur">② 剪枝</a>
+  <a href="03.html">③ 张量分解</a>
+</div>
+
+<div class="wrap">
+  <div class="lec-no">LECTURE 02</div>
+  <h1>Torch-Pruning：结构化剪枝</h1>
+  <p class="subtitle">给模型“做减法”而不留窟窿 —— 用 DepGraph 自动找出“必须一起剪的一组”，真正减体积、降显存、提速度</p>
+
+  <div class="lead">
+    上一讲的 FP16 是“把每个数记得更省”，但模型该算的还是全算了一遍。这一讲换一种思路：<strong>干脆把不重要的部分整块删掉</strong>——
+    少算、少存、少占显存。难点在于神经网络的“枝条”互相牵连，剪错会让模型直接崩掉。
+    <code>torch-pruning 1.6.1</code> 的核心武器 <strong>DepGraph</strong> 就是来解决这个牵连问题的。
+  </div>
+
+  <div class="goals">
+    <h3>🎯 本讲学完你会……</h3>
+    <ul>
+      <li>分清<strong>非结构化 vs 结构化</strong>剪枝，并说清为什么只有结构化才能在通用硬件上<strong>真正提速、省显存</strong>；</li>
+      <li>理解剪枝的“牵连问题”——剪一个输出通道会波及哪些层，以及 <strong>DepGraph / Group</strong> 如何自动处理；</li>
+      <li>掌握<strong>重要性度量</strong>（L1/L2、Taylor）、剪枝率、一次性 vs 迭代式剪枝的取舍；</li>
+      <li>用 Torch-Pruning 跑通<strong>剪枝 + 微调</strong>的完整流程，量化对比参数量/MACs/精度；</li>
+      <li>知道怎么在 <strong>pangu-weather（Transformer）</strong> 上剪 MLP/注意力通道来吃 U/V，并用微调守住 W。</li>
+    </ul>
+  </div>
+
+  <h2>§0　上一讲回顾 &amp; 思考题全解</h2>
+
+  <div class="callout rev">
+    <span class="ttl">上一讲要点速览</span>
+    <ul style="margin:4px 0;">
+      <li><strong>ONNX</strong> = 把模型翻译成框架无关的“计算图”（节点=算子、边=张量），是一切图级优化与部署引擎的统一入口。</li>
+      <li><strong>onnxsim</strong>：常量折叠 + 算子融合 + 去冗余，只改结构不改数值。</li>
+      <li><strong>onnxconverter-common（FP16）</strong>：每个数 4 字节 → 2 字节，体积/显存约减半；敏感算子用 <code>op_block_list</code> 保 FP32，或 <code>auto_mixed_precision</code> 自动兜底。</li>
+      <li>固定顺序：<strong>导出 → simplify → FP16 → 交给引擎编译</strong>；U/V 靠它拿分，W（精度）要在验证集实测守住。</li>
+    </ul>
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">Q1 解答：为什么训练爱用 BF16、推理爱用 FP16</span>
+    <strong>关键在 16 位预算怎么切：</strong>FP16 = 1 符号 + <strong>5 指数</strong> + <strong>10 尾数</strong>；BF16 = 1 符号 + <strong>8 指数</strong> + <strong>7 尾数</strong>。指数位决定<em>范围</em>，尾数位决定<em>精度</em>。<br>
+    <strong>训练用 BF16：</strong>反向传播里梯度的动态范围极大，很小的梯度在 FP16（范围仅 ±65504）里会下溢成 0、很大的会溢出成 inf，得靠 loss scaling 兜。BF16 保留了和 FP32 一样的 8 位指数 → <strong>范围几乎不缩，天然不易溢出</strong>，训练稳定；尾数糙一点没关系，SGD 本身对噪声鲁棒。<br>
+    <strong>推理用 FP16：</strong>权重已训好、数值落在有界的良性区间，更在意每个数的<em>有效数字</em>。FP16 的 10 位尾数 ≈ 3~4 位十进制精度（BF16 只有约 2~3 位），数值保真更好；且 FP16 被各推理硬件与引擎（Tensor Core、MIGraphX 等）原生支持。<strong>一句话：训练要范围（BF16），推理要精度（FP16）。</strong>
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">Q2 解答：Softmax→ReduceMean 分支转 FP16 后出 NaN</span>
+    <strong>原因：</strong>这条分支全是“易爆”操作。<code>Softmax</code> 里的 <code>exp()</code> 对稍大的 logit 就会算出超过 FP16 上限（±65504）的值 → <code>inf</code>；<code>ReduceMean/ReduceSum</code> 把很多数累加，FP16 尾数少，累加既容易溢出又丢精度。一旦出现 <code>inf</code>，后续 <code>inf−inf</code> 或 <code>inf/inf</code> 就变 <code>NaN</code> 并污染整条链路。<br>
+    <strong>修法一（手工）：</strong>把这些算子保留为 FP32——<code>convert_float_to_float16(model, op_block_list=["Softmax","ReduceMean","ReduceSum"])</code>，或用 <code>node_block_list</code> 精确点名那几个节点；再配合 <code>min_positive_val/max_finite_val</code> 钳制数值。<br>
+    <strong>修法二（自动）：</strong>用 <code>auto_mixed_precision.auto_convert_mixed_precision</code>，给一组校验输入和容差函数，它会自动定位“一转就崩/掉精度”的算子并保留 FP32。
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">Q3 解答：FP16 对“模型大小”和“显存”的改善为何不完全一样</span>
+    <strong>模型大小：</strong>主要是权重，FP32→FP16 每个数 4→2 字节，文件<strong>≈ 减半</strong>（除非有些静态数据/查表没转）。<br>
+    <strong>显存：</strong>推理峰值显存 = 权重 + <strong>激活（中间特征图）</strong> + 输入输出缓冲 + kernel 的临时 workspace + 运行时固定开销。权重和激活转 FP16 都减半，但：① 若 <code>keep_io_types=True</code>，输入输出仍是 FP32；② block 掉的算子其激活仍是 FP32；③ workspace 与运行时固定开销不随精度缩小。所以<strong>显存改善很可观，但通常达不到精确的一半</strong>。这也提醒：评分 U 的显存那 20 分必须<strong>实测推理峰值显存</strong>，不能拿文件大小代替。
+  </div>
+
+  <div class="callout der">
+    <span class="ttl">Q4 解答：只用“导出+simplify+FP16”的 pangu-weather 流程 checklist</span>
+    <ol style="margin:4px 0;">
+      <li><strong>测基线</strong>：跑通全量 FP32，记录 模型大小（目录+权重）、<strong>推理峰值显存</strong>、单样本推理时长（按规定计时段）、各气象指标 <strong>RMSE/ACC</strong>——这些是所有比值的分母。</li>
+      <li><strong>导出</strong>：<code>model.eval()</code> → <code>torch.onnx.export</code>（opset≥17，必要时设 <code>dynamic_axes</code>）；<code>checker</code> 校验 + ORT 与 PyTorch 数值对齐（<code>allclose</code>）。</li>
+      <li><strong>简化</strong>：<code>onnxsim.simplify</code>，<code>assert ok</code>，再对齐一次数值。</li>
+      <li><strong>转 FP16</strong>：先 <code>keep_io_types=True</code> 全转，<strong>在验证集实测 RMSE/ACC</strong>。</li>
+      <li><strong>救精度</strong>：哪个指标掉/出 NaN，就把 <code>LayerNorm/Softmax/ReduceMean</code> 等加进 <code>op_block_list</code>，或上自动混合精度。</li>
+      <li><strong>上卡编译</strong>：用 MIGraphX 编译，实测推理时长与峰值显存。</li>
+    </ol>
+    <strong>验证指标 checklist：</strong>□ 体积↓ □ 峰值显存↓（实测） □ 单样本时长↓ □ 每个气象指标 RMSE/ACC 相对原模型未明显变差。
+  </div>
+
+  <h2>§1　非结构化 vs 结构化：为什么“剪得整齐”才真省</h2>
+
+  <div class="callout tip">
+    <span class="ttl">开场类比：删字 vs 删段</span>
+    给一篇文章瘦身有两种删法。<strong>非结构化</strong>像“在全文里东划掉一个字、西划掉一个字”——划掉的地方多，但排版还得给每个空位留位置，页数没真减少。
+    <strong>结构化</strong>像“整段整段地删”——删完直接少几页。神经网络也一样：<strong>零散地把单个权重置零（非结构化）</strong>，矩阵形状没变、通用硬件照样按稠密矩阵算，省不了多少；
+    <strong>整通道/整滤波器/整层地删（结构化）</strong>，矩阵真的变小了，算量、权重、显存才会同步下降。
+  </div>
+
+  <h3>两者的本质区别</h3>
+  <ul>
+    <li><strong>非结构化剪枝（unstructured）</strong>：按权重大小等标准，把<strong>单个权重</strong>置零，得到一个<strong>稀疏但形状不变</strong>的权重矩阵。灵活、精度损失小，但要真加速得靠专门的稀疏算子/硬件支持，否则在国产卡这类通用加速器上“看着稀疏、算得不快、占的显存也没少”。</li>
+    <li><strong>结构化剪枝（structured）</strong>：成组地删除<strong>整个通道 / 卷积核 / 注意力头 / 神经元</strong>，剩下的仍是一个<strong>更小的稠密</strong>权重。直接缩小矩阵维度 → 参数量、MACs、显存、延迟<strong>全都真实下降</strong>，无需特殊硬件。</li>
+  </ul>
+
+  <div class="keybox">
+    <span class="k">为什么本赛题必须用结构化剪枝</span>
+    评分的 U（体积/显存）和 V（速度）要的是“在国产加速卡上真实变小、变快”。非结构化的稀疏矩阵在通用硬件上既不省显存也不提速——
+    所以 <strong>torch-pruning 主打的“结构化剪枝”才是对分数有效的那把刀</strong>。
+  </div>
+
+  <figure>
+    <img src="assets/tp_group.png" alt="非结构化稀疏 vs 结构化稀疏 vs 一致的结构化稀疏 三种对比">
+    <figcaption>(a) 非结构化稀疏：零散置零，形状不变；(b) 结构化但不一致：整行删了，但相耦合的两层删得对不上；(c) <strong>一致的结构化稀疏</strong>：相互依赖的层删的是同一组——这正是 DepGraph 要保证的。图：VainF/Torch-Pruning（MIT License）</figcaption>
+  </figure>
+
+  <h2>§2　牵连问题与 DepGraph：剪一刀，牵动一片</h2>
+
+  <div class="callout tip">
+    <span class="ttl">开场类比：拆水管不能只拆一头</span>
+    假设你想拆掉一根水管，那它两端接的接口、阀门、下游连着的管子都得跟着处理，否则整条管路就漏了。
+    神经网络里，<strong>删掉某层的一个输出通道</strong>，下一层对应的<strong>输入通道</strong>就悬空了，中间的 <strong>BN、残差相加、拼接</strong>也都跟着对不上。
+    所以结构化剪枝的真正难点不是“删谁”，而是<strong>“删一个，必须连带删哪些才能保持整张图自洽”</strong>。
+  </div>
+
+  <h3>四类典型依赖：必须“成组同删”</h3>
+  <p>上面 §1 图 (b) 的教训就是：耦合的两层如果删得不一致，模型就废了。下图列出几种必须同步剪的依赖结构：</p>
+
+  <figure>
+    <img src="assets/tp_dep.png" alt="四类参数依赖：基础依赖、残差依赖、拼接依赖、归约依赖">
+    <figcaption>四类依赖：(a) 基础依赖（前层输出↔后层输入）、(b) 残差依赖（相加的两路通道必须对齐）、(c) 拼接依赖（concat 各分支）、(d) 归约依赖。高亮的参数必须<strong>同时被剪</strong>。图：VainF/Torch-Pruning（MIT License）</figcaption>
+  </figure>
+
+  <div class="callout der">
+    <span class="ttl">DepGraph 在做的事：自动找出“最小可删单元 Group”</span>
+    <strong>DepGraph（Dependency Graph，依赖图）</strong>会扫描整个模型，建一张记录“谁和谁的通道是绑定的”的依赖图，然后把所有相互牵连、<strong>必须一起剪</strong>的层归成一个 <strong>Group（组）</strong>。
+    Group 就是结构化剪枝里“能被安全删除的最小整体”——你只要说“想剪某层的第 3、7、9 号通道”，DepGraph 会自动把这一组里所有耦合层的对应通道一并剪掉，并修好 BN、残差、拼接，保证剪完图仍然能跑。
+    <strong>这正是 torch-pruning 相对“手动剪”的核心价值：把易错的牵连关系自动算对。</strong>
+  </div>
+
+  <h3>它适用于几乎所有主流结构</h3>
+  <figure>
+    <img src="assets/tp_intro.png" alt="结构化剪枝在 CNN、Transformer、RNN、GNN 上的可剪位置">
+    <figcaption>DepGraph 的通用性：在 (a) CNN、(b) <strong>Transformer</strong>、(c) RNN、(d) GNN 上都能自动分析依赖并剪枝。注意 (b) Transformer 里 <strong>MLP</strong> 是重点可剪对象——这与 pangu-weather 的结构高度相关。图：VainF/Torch-Pruning（MIT License）</figcaption>
+  </figure>
+
+  <h2>§3　剪谁、剪多少、怎么剪：重要性度量与策略</h2>
+
+  <div class="callout tip">
+    <span class="ttl">开场类比：精简团队先看“贡献度”</span>
+    要给团队精简编制，你会先评估每个人的贡献，再裁掉贡献最低的。剪枝同理：先给每个通道/滤波器算一个<strong>重要性分数</strong>，把分数最低的那批删掉。
+  </div>
+
+  <h3>① 重要性度量：怎么判断一个通道重不重要</h3>
+  <ul>
+    <li><strong>幅值范数（L1/L2 norm）</strong>：通道权重的绝对值之和/平方和越小，说明它输出的贡献越弱，越该剪。简单、稳、最常用。</li>
+    <li><strong>Taylor / 梯度类</strong>：用一阶泰勒展开估计“删掉这个通道，损失会涨多少”，需要一点校验数据跑反向。更准，但更重。</li>
+    <li><strong>随机 / 其他</strong>：作基线对照。</li>
+  </ul>
+  <p>在 torch-pruning 里，这些被封装成 <code>importance</code> 对象（如 <code>MagnitudeImportance</code>、<code>TaylorImportance</code>、<code>GroupNormImportance</code>），而且是<strong>按 Group 整体打分</strong>的——因为要删就是一整组一起删。</p>
+
+  <h3>② 剪枝率：删多少</h3>
+  <p>用 <code>pruning_ratio</code> 控制整体删除比例（如 0.5 = 目标砍掉一半通道），也可对不同层设不同比例。<strong>剪得越狠，U/V 越高，但 W（精度）越危险</strong>——这正是赛题里要找的 Pareto 平衡点。</p>
+
+  <h3>③ 一次性 vs 迭代式</h3>
+  <ul>
+    <li><strong>一次性（one-shot）</strong>：一刀剪到目标比例，再微调。快，但剪太狠时精度难回。</li>
+    <li><strong>迭代式（iterative）</strong>：剪一点 → 微调 → 再剪一点 → 再微调，分多步逼近目标。慢，但同样压缩率下精度通常更好。torch-pruning 支持用 <code>pruner.step()</code> 一步步推进。</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="ttl">一条铁律：剪完几乎一定要微调</span>
+    删通道会直接抹掉一部分已学到的表示，精度通常立刻下滑。<strong>剪枝 + 微调（fine-tune）是一套连招</strong>，不能只剪不练。微调让剩下的通道“接管”被删通道的职责，把精度拉回来——这一步决定了你的 W 能不能守住。
+  </div>
+
+  <h2>§4　Torch-Pruning API：剪枝五步走</h2>
+
+  <div class="callout der">
+    <span class="ttl">高层 Pruner 的标准套路</span>
+    torch-pruning 把“建依赖图 + 按 Group 打分 + 全局排序 + 迭代剪 + 改结构”都封装进一个 <code>pruner</code>。你只需提供：
+    ① 模型与样例输入（用来建 DepGraph）；② 重要性度量；③ 剪枝率；④ <strong>必须保护、不能剪的层</strong>（最关键是输出层）。
+  </div>
+
+  <div class="pyblock"><div class="lang">PYTHON · 结构化剪枝标准流程</div><pre><span class="k">import</span> torch, torch_pruning <span class="k">as</span> tp
+<span class="k">import</span> torchvision.models <span class="k">as</span> tvm
+
+model <span class="o">=</span> tvm<span class="o">.</span><span class="f">resnet18</span>(weights<span class="o">=</span><span class="s">"DEFAULT"</span>)<span class="o">.</span><span class="f">eval</span>()
+example <span class="o">=</span> torch<span class="o">.</span><span class="f">randn</span>(<span class="n">1</span>, <span class="n">3</span>, <span class="n">224</span>, <span class="n">224</span>)
+
+<span class="c"># ① 重要性度量：按 Group 的 L2 范数打分</span>
+imp <span class="o">=</span> tp<span class="o">.</span>importance<span class="o">.</span><span class="f">GroupNormImportance</span>(p<span class="o">=</span><span class="n">2</span>)
+
+<span class="c"># ② 保护层：分类头不能剪（剪了输出维度就变了！）</span>
+ignored <span class="o">=</span> [m <span class="k">for</span> m <span class="k">in</span> model<span class="o">.</span><span class="f">modules</span>() <span class="k">if</span> <span class="f">isinstance</span>(m, torch<span class="o">.</span>nn<span class="o">.</span>Linear) <span class="k">and</span> m<span class="o">.</span>out_features <span class="o">==</span> <span class="n">1000</span>]
+
+<span class="c"># ③ 构造 Pruner：内部自动 build DepGraph、分组、全局排序</span>
+pruner <span class="o">=</span> tp<span class="o">.</span><span class="f">MetaPruner</span>(
+    model, example,
+    importance<span class="o">=</span>imp,
+    pruning_ratio<span class="o">=</span><span class="n">0.5</span>,            <span class="c"># 目标：砍掉约一半通道</span>
+    ignored_layers<span class="o">=</span>ignored,        <span class="c"># 输出层 / 不想剪的层</span>
+    iterative_steps<span class="o">=</span><span class="n">5</span>,            <span class="c"># 分 5 步迭代剪，更稳</span>
+)
+
+base_macs, base_params <span class="o">=</span> tp<span class="o">.</span>utils<span class="o">.</span><span class="f">count_ops_and_params</span>(model, example)
+
+<span class="c"># ④ 迭代：每 step 剪一点，然后微调几个 epoch</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">5</span>):
+    pruner<span class="o">.</span><span class="f">step</span>()                      <span class="c"># 真正修改模型结构（同组通道一并删）</span>
+    macs, params <span class="o">=</span> tp<span class="o">.</span>utils<span class="o">.</span><span class="f">count_ops_and_params</span>(model, example)
+    <span class="f">print</span>(<span class="s">f"step {i}: params={params/1e6:.2f}M  MACs={macs/1e9:.2f}G"</span>)
+    <span class="c"># finetune(model, train_loader, epochs=1)   # ⑤ 每步后微调回补精度</span></pre></div>
+
+  <div class="callout der">
+    <span class="ttl">剪完得到的是“真小”的模型</span>
+    <code>pruner.step()</code> 之后，模型里的卷积/线性层的 <code>out_channels/in_channels</code> 是<strong>真的变小了</strong>，不是打掩码。
+    所以可以直接 <code>torch.save</code> 存权重、或导出 ONNX——文件、显存、推理时长都会真实下降。<strong>这正好能接上第一讲：剪完再导出 ONNX → simplify → FP16，收益叠加。</strong>
+  </div>
+
+  <h2>§5　完整示例：ResNet18 剪一半，看收益与代价</h2>
+
+  <div class="callout ex">
+    <span class="ttl">目标</span>
+    把 ResNet18 用结构化剪枝砍掉约一半通道，量化对比<strong>参数量、MACs（计算量）、精度</strong>在“剪枝前 / 剪枝后 / 微调后”三个时刻的变化，建立“剪多少、掉多少、能回补多少”的直觉。
+  </div>
+
+  <div class="pyblock"><div class="lang">PYTHON · 剪枝 + 微调 + 评测</div><pre><span class="c"># 接上一段：pruner 已迭代剪到目标比例</span>
+pruned_macs, pruned_params <span class="o">=</span> tp<span class="o">.</span>utils<span class="o">.</span><span class="f">count_ops_and_params</span>(model, example)
+<span class="f">print</span>(<span class="s">f"参数量: {base_params/1e6:.1f}M -> {pruned_params/1e6:.1f}M"</span>)
+<span class="f">print</span>(<span class="s">f"MACs : {base_macs/1e9:.2f}G -> {pruned_macs/1e9:.2f}G"</span>)
+
+<span class="c"># 微调：用训练集把精度拉回来（剪枝后这步几乎必做）</span>
+opt <span class="o">=</span> torch<span class="o">.</span>optim<span class="o">.</span><span class="f">SGD</span>(model<span class="o">.</span><span class="f">parameters</span>(), lr<span class="o">=</span><span class="n">1e-3</span>, momentum<span class="o">=</span><span class="n">0.9</span>)
+<span class="k">for</span> epoch <span class="k">in</span> <span class="f">range</span>(<span class="n">5</span>):
+    model<span class="o">.</span><span class="f">train</span>()
+    <span class="k">for</span> x, y <span class="k">in</span> train_loader:
+        opt<span class="o">.</span><span class="f">zero_grad</span>()
+        loss <span class="o">=</span> torch<span class="o">.</span>nn<span class="o">.</span>functional<span class="o">.</span><span class="f">cross_entropy</span>(model(x), y)
+        loss<span class="o">.</span><span class="f">backward</span>(); opt<span class="o">.</span><span class="f">step</span>()
+
+<span class="c"># 存权重 / 导出 ONNX（结构已真实变小）</span>
+torch<span class="o">.</span><span class="f">save</span>(model<span class="o">.</span><span class="f">state_dict</span>(), <span class="s">"r18_pruned.pth"</span>)</pre></div>
+
+  <div class="callout der">
+    <span class="ttl">你会看到的典型结果（量级感）</span>
+    <ul style="margin:4px 0;">
+      <li><strong>参数量 / MACs</strong>：<code>pruning_ratio=0.5</code> 大致让两者降到原来的 1/4 ~ 1/2（通道两端都缩，参数约按平方关系下降）；</li>
+      <li><strong>精度</strong>：刚剪完可能掉好几个点甚至更多；<strong>微调几个 epoch 后通常能回到接近原始精度</strong>，剩下零点几到一两个点的差距；</li>
+      <li><strong>结论</strong>：剪枝是“用一点精度 + 一段微调，换实打实的体积/显存/速度”，且收益比 FP16 更大、更可调。</li>
+    </ul>
+  </div>
+
+  <h2>§6　易错点 · 一图流 · 赛题落点</h2>
+
+  <h3>⚠️ 易错点汇总</h3>
+  <ul>
+    <li><strong>剪了输出层</strong>：分类头/回归头维度被改，输出对不上 → 一定要放进 <code>ignored_layers</code>。</li>
+    <li><strong>残差 / 拼接处手动剪</strong>：最容易剪出维度不匹配的 bug——这正是要用 DepGraph 自动分组的原因，别手动绕过它。</li>
+    <li><strong>只剪不微调</strong>：精度塌了还以为方法不行；微调是连招的后半段。</li>
+    <li><strong>一刀剪太狠</strong>：剪枝率过高、又不迭代，精度回不来；改用 <code>iterative_steps</code> 分步剪。</li>
+    <li><strong>分组卷积 / 注意力头</strong>：有整除约束（如剪完通道数要能被组数/头数整除），torch-pruning 会处理，但要理解约束在哪，别设出无法整除的比例。</li>
+    <li><strong>拿“掩码稀疏”冒充结构化</strong>：置零不改形状＝不省显存不提速，对评分无效。</li>
+  </ul>
+
+  <div class="callout sum">
+    <span class="ttl">🎯 一图流小结</span>
+    <strong>结构化剪枝 = 整通道地删 → 真小、真快、真省显存（非结构化只是置零，通用硬件不买账）。</strong><br>
+    难点是“牵连”——删一个通道会波及下游输入、BN、残差、拼接；<strong>DepGraph 自动把耦合层归成 Group，保证成组同删、图仍自洽。</strong><br>
+    流程：<strong>定重要性(L1/L2/Taylor) → 设剪枝率 → 保护输出层 → 迭代剪 + 微调 → 存/导出</strong>。剪枝率越高 U/V 越高、W 越险，找 Pareto 点。
+  </div>
+
+  <div class="callout link">
+    <span class="ttl">🔗 赛题落点：在 pangu-weather 上怎么剪</span>
+    <ul style="margin:4px 0;">
+      <li><strong>剪哪里</strong>：pangu-weather 是 3D Transformer，重点剪 <strong>MLP（FFN）的隐藏维</strong>和<strong>注意力的投影通道/头</strong>（见 §2 那张图的 Transformer 分支），这些是参数与计算的大头。</li>
+      <li><strong>U / V（≈60 分）</strong>：结构化剪枝直接缩小权重矩阵 → 体积↓、显存↓、单样本推理时长↓，收益比纯 FP16 更大、更可调。</li>
+      <li><strong>W（精度 40 分）</strong>：剪完务必<strong>用 ERA5 训练/验证集微调或蒸馏</strong>回补，在验证集盯住各气象指标的 RMSE/ACC，按 Pareto 选剪枝率。</li>
+      <li><strong>叠加</strong>：<strong>剪枝(去结构冗余) → 导出 ONNX → simplify → FP16(压精度位宽)</strong> 串起来，收益相乘；下一讲的张量分解再压“低秩冗余”，三招组合。</li>
+    </ul>
+  </div>
+
+  <div class="qz">
+    <h3>✏️ 思考题（下一讲开头给出完整解答）</h3>
+    <div class="q">为什么“非结构化剪枝把 90% 权重置零”在国产加速卡这类通用硬件上，往往<strong>既不省显存也不提速</strong>？而结构化剪枝即使只删 30% 通道，却能实打实地降体积/显存/延迟？请从“矩阵形状 vs 稀疏掩码”和“硬件怎么算”两个角度说清楚。</div>
+    <div class="q">残差连接 <code>y = F(x) + x</code> 处，如果你只剪了 <code>F(x)</code> 分支最后一层的输出通道、却没动 shortcut 分支，会发生什么？DepGraph 会如何处理这个 Group？（提示：相加要求两路通道数一致。）</div>
+    <div class="q">同样要把模型压到“参数减半”，一次性剪枝 vs 迭代式剪枝在<strong>最终精度</strong>上通常谁更好、为什么？如果你时间很紧，会怎么折中？</div>
+    <div class="q">在 pangu-weather 上，你打算对 MLP 用 <code>pruning_ratio=0.5</code>、对注意力投影用 <code>0.3</code>，并保护 patch embedding 与最终预测头。请说明：①为什么对不同模块设不同比例；②哪些层必须进 <code>ignored_layers</code>；③剪完到拿到最终 U/V/W 分数之间，你还要做哪几步（含验证指标）。</div>
+  </div>
+
+
+  <div class="foot">
+    <span><a href="01.html">← 上一讲：ONNX 三件套 / FP16</a></span>
+    <span><a href="03.html">下一讲：TensorLy 张量分解 →</a></span>
+  </div>
+  <div class="printhint">提示：用浏览器「打印 / 另存为 PDF」即可得到干净的讲义（导航栏与本提示会自动隐藏）。</div>
+</div>
+</body>
+</html>

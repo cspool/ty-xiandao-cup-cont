@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>为什么 decode 慢、双缓冲又没用?——海光 DCU 上的实测拆解</title>
+<style>
+  :root{
+    --ink:#1f2328; --ink2:#3a4149; --mut:#6b7280; --line:#e6e8eb;
+    --paper:#ffffff; --band:#f7f8fa; --accent:#0e7490; --accent2:#b45309;
+    --good:#15803d; --bad:#b91c1c; --warn:#a16207; --blue:#0ea5e9; --violet:#7c3aed;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.85;font-size:16.5px;letter-spacing:.1px}
+  .wrap{max-width:960px;margin:0 auto;padding:0 22px 90px}
+  header.hero{padding:44px 22px 28px;border-bottom:2px solid var(--line);background:linear-gradient(180deg,#fbfdff,#fff)}
+  .hero-inner{max-width:960px;margin:0 auto}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:2px;font-size:13px;text-transform:uppercase}
+  h1{font-size:32px;line-height:1.3;margin:10px 0 8px}
+  .sub{color:var(--mut);font-size:16px;max-width:800px}
+  .meta{margin-top:15px;display:flex;gap:10px;flex-wrap:wrap}
+  .pill{background:var(--band);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:13px;color:var(--ink2)}
+  .pill b{color:var(--accent)}
+  h2{font-size:24px;margin:50px 0 8px;padding-top:8px}
+  h2 .n{display:inline-block;width:34px;height:34px;line-height:34px;text-align:center;border-radius:9px;background:var(--accent);color:#fff;font-size:16px;margin-right:11px;vertical-align:2px}
+  h3{font-size:19px;margin:28px 0 6px}
+  h4{font-size:16px;margin:18px 0 4px;color:var(--accent2);letter-spacing:.3px}
+  p{margin:10px 0} .lead{font-size:17.5px;color:var(--ink2)}
+  em{font-style:normal;background:linear-gradient(transparent 62%,#fde68a 62%);padding:0 1px;font-weight:600}
+  code{background:#f2f4f7;border:1px solid #e5e8ec;border-radius:5px;padding:1px 6px;font-family:"Cascadia Code",Consolas,monospace;font-size:13.5px;color:#0b5563}
+  ul,ol{margin:10px 0;padding-left:24px} li{margin:7px 0}
+  .band{background:var(--band);border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:20px 0}
+  .callout{border-left:5px solid var(--accent);background:#f0fbff;border-radius:0 12px 12px 0;padding:14px 18px;margin:18px 0}
+  .callout.warn{border-color:var(--warn);background:#fffdf3}
+  .callout.bad{border-color:var(--bad);background:#fff5f5}
+  .callout.good{border-color:var(--good);background:#f2fdf5}
+  .callout .t{font-weight:700;margin-bottom:2px}
+  figure{margin:24px 0;text-align:center}
+  figure svg{max-width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+  figcaption{color:var(--mut);font-size:13.5px;margin-top:9px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  @media(max-width:720px){.two{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#fff}
+  .card h4{margin-top:0}
+  .fx{font-family:"Cambria Math","Times New Roman",serif;font-style:italic}
+  .hipbox{border:1px dashed #b45309;background:#fffdf6;border-radius:12px;padding:14px 18px;margin:18px 0}
+  .hipbox .t{color:var(--accent2);font-weight:700;letter-spacing:.5px}
+  .exp{border:1px solid #bae6fd;background:#f5fbff;border-radius:12px;padding:6px 18px 14px;margin:18px 0}
+  .exp .lbl{display:inline-block;background:#0369a1;color:#fff;font-size:12px;font-weight:700;border-radius:0 0 8px 8px;padding:3px 12px;margin-left:-2px}
+  .data{font-family:"Cascadia Code",Consolas,monospace;font-size:13px;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;overflow-x:auto;line-height:1.65}
+  .data .h{color:#7dd3fc} .data .g{color:#86efac} .data .r{color:#fca5a5} .data .y{color:#fde047} .data .m{color:#94a3b8}
+  .foot{margin-top:56px;padding-top:18px;border-top:2px solid var(--line);color:var(--mut);font-size:13.5px}
+  .big{font-size:19px;font-weight:700}
+  .num{font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;font-size:12px;font-weight:700;border-radius:6px;padding:2px 8px;margin-right:6px}
+  .t-mem{background:#dbeafe;color:#1e40af} .t-cmp{background:#fee2e2;color:#b91c1c} .t-good{background:#dcfce7;color:#15803d}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <div class="kicker">大模型推理 · 海光 DCU(gfx936)· 实测拆解</div>
+    <h1>为什么 decode 慢到"算力闲置"、双缓冲还救不了?</h1>
+    <p class="sub">两个高频困惑,一次讲透:①prefill / decode 的<b>权重 IO、KV-cache IO、计算</b>各占多少时间?
+      ②为什么<b>双缓冲</b>做了没效果、VGPR/LDS 也不高、并发还是上不去?<em>本文所有结论都来自我在 DCU 上跑的真实微基准。</em></p>
+    <div class="meta">
+      <span class="pill">实测 HBM 峰值 <b>1206 GB/s</b></span>
+      <span class="pill">实测 bf16 算力峰值 <b>≈395 TFLOPS</b></span>
+      <span class="pill">roofline 拐点 <b>≈327 FLOP/byte</b></span>
+      <span class="pill">wave64 · gfx936</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="band">
+  <div class="big">先给两句话结论(后面用数据证)</div>
+  <ul>
+    <li><b>问题①</b>:decode 是<em>权重 IO 说了算</em>——实测算力只用了峰值的 <b>0.3%</b>,时间几乎全在"把权重从显存搬进来";prefill 相反,是<em>计算说了算</em>(权重被成百上千个 token 复用摊薄)。</li>
+    <li><b>问题②</b>:你的 GEMV <em>本来就贴着带宽墙了</em>(实测无双缓冲已达 HBM 峰值的 92–101%)。双缓冲/占用率是"藏延迟"的工具,可你不是被延迟卡住、而是被<b>带宽</b>卡住——所以做了没用。<em>唯一出路是减少要搬的字节(量化)。</em></li>
+  </ul>
+</div>
+
+<!-- ============ Part 1 ============ -->
+<h2 id="p1"><span class="n">1</span>prefill vs decode:三种资源各占多少时间</h2>
+
+<h3>先分清"三种资源"</h3>
+<p>一层 Transformer 的耗时,拆成三个互相独立的硬件资源:</p>
+<ul>
+  <li><span class="tag t-mem">权重 IO</span>把模型权重从 HBM 搬进计算单元。字节数<em>固定</em>(权重就那么大),与一次处理多少 token 无关。</li>
+  <li><span class="tag t-mem">KV-cache IO</span>读写注意力的 KV 缓存。字节数随<em>上下文长度</em>增长。</li>
+  <li><span class="tag t-cmp">计算</span>张量/向量单元真正做的乘加(FLOPs)。随<em>处理的 token 数</em>增长。</li>
+</ul>
+<p>到底哪个成为瓶颈,由一个量决定:<b>算术强度</b>(Arithmetic Intensity)= <span class="fx">FLOPs ÷ 搬运字节数</span>,即"每搬一个字节,能顺带算多少次"。
+它和硬件的<em>拐点</em> = <span class="fx">算力峰值 ÷ 带宽峰值</span> 比较:低于拐点=<b class="t-mem" style="background:none">访存受限</b>,高于=<b class="t-cmp" style="background:none">计算受限</b>。
+我实测这台 DCU:算力峰值 ≈395 TFLOPS、HBM ≈1206 GB/s → <b>拐点 ≈ 327 FLOP/byte</b>。</p>
+
+<h3>实测:同一份权重,M 从 1(decode)扫到 4096(prefill)</h3>
+<div class="exp"><span class="lbl">实验 A · expA.py · gate_up 权重 [34816×5120] = 356.5 MB</span>
+<div class="data">
+<span class="m"> M(tokens)   dt(us)   TFLOPS   权重GB/s   算术强度   瓶颈</span>
+<span class="h">     1</span>      292.1     <span class="r">1.22</span     <span class="g">1221</span>       1.0    <span class="t-mem" style="background:none;color:#7dd3fc">访存</span>   ← decode
+       2      290.4     2.46     1228       2.0    访存
+       4      282.7     5.04     1261       4.0    访存
+       8      281.3    10.14     1268       8.0    访存
+      32      270.6    42.16     <span class="g">1318</span>      32.0    过渡
+     128      288.7   158.06     1235     128.0    过渡→计算
+     512      560.6   325.60      636     512.0    <span class="y">计算</span>
+<span class="h">  2048</span>     1836.2   <span class="y">397.64</span      194    2048.0    <span class="y">计算</span>   ← prefill
+    4096     3703.8   394.27       96    4096.0    计算
+</div></div>
+
+<figure>
+<svg viewBox="0 0 900 360" role="img" aria-label="算术强度切换实测曲线">
+  <text x="24" y="28" font-size="16" font-weight="700" fill="#1f2328">实测:decode 端(M小)时间被"权重搬运"钉死,加 token 近乎免费</text>
+  <!-- axes -->
+  <line x1="70" y1="300" x2="850" y2="300" stroke="#cbd5e1" stroke-width="1.5"/>
+  <line x1="70" y1="60" x2="70" y2="300" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="60" y="66" font-size="12" fill="#6b7280" text-anchor="end">高</text>
+  <text x="440" y="335" font-size="13" fill="#6b7280" text-anchor="middle">M(一次处理的 token 数) →  1 · 8 · 32 · 128 · 512 · 2048 · 4096</text>
+  <!-- x positions -->
+  <!-- dt curve (flat then rising) -->
+  <polyline fill="none" stroke="#0ea5e9" stroke-width="3"
+    points="110,270 200,272 290,276 380,270 470,215 620,120 760,70 820,64"/>
+  <text x="470" y="205" font-size="13" fill="#0369a1" font-weight="700">dt 耗时</text>
+  <!-- TFLOPS curve (rising to plateau) -->
+  <polyline fill="none" stroke="#b91c1c" stroke-width="3" stroke-dasharray="1 0"
+    points="110,298 200,296 290,290 380,258 470,190 620,110 760,88 820,90"/>
+  <text x="630" y="102" font-size="13" fill="#b91c1c" font-weight="700">TFLOPS 算力</text>
+  <!-- flat region shade -->
+  <rect x="100" y="60" width="300" height="240" fill="#0ea5e9" opacity="0.06"/>
+  <text x="250" y="90" font-size="13" fill="#0369a1" text-anchor="middle" font-weight="700">访存受限区</text>
+  <text x="250" y="110" font-size="11.5" fill="#0369a1" text-anchor="middle">dt 几乎不变(~280us)</text>
+  <text x="250" y="126" font-size="11.5" fill="#0369a1" text-anchor="middle">算力线性涨 1.2→42 TFLOPS</text>
+  <rect x="560" y="60" width="290" height="240" fill="#b91c1c" opacity="0.05"/>
+  <text x="705" y="90" font-size="13" fill="#b91c1c" text-anchor="middle" font-weight="700">计算受限区</text>
+  <text x="705" y="110" font-size="11.5" fill="#b91c1c" text-anchor="middle">算力到顶 ~395 TFLOPS</text>
+  <text x="705" y="126" font-size="11.5" fill="#b91c1c" text-anchor="middle">dt 随 M 线性增长</text>
+  <line x1="470" y1="60" x2="470" y2="300" stroke="#6b7280" stroke-dasharray="4 4"/>
+  <text x="470" y="52" font-size="12" fill="#6b7280" text-anchor="middle">拐点 M≈32–128</text>
+</svg>
+<figcaption>M=1→32 时 dt 从 292 只降到 271us(几乎不动)——因为时间 = 权重字节 ÷ 带宽,与 token 数无关。这正是"<b>decode 端算力大量闲置</b>"的根源。</figcaption>
+</figure>
+
+<div class="callout">
+  <div class="t">把实测换算到整个 27B 模型的一次 decode</div>
+  <p style="margin:6px 0">Qwen3.5-27B 全部权重 ≈ <b>54 GB</b>(bf16)。按实测 decode 带宽 ~1200 GB/s:</p>
+  <ul style="margin:6px 0">
+    <li><span class="tag t-mem">权重 IO</span>54 GB ÷ 1.2 TB/s ≈ <b>45 ms / token</b> —— 和我们实测的 bf16 baseline TPOT(≈49 ms)几乎吻合。</li>
+    <li><span class="tag t-cmp">计算</span>每 token 约 2×27e9 = 54 GFLOP,÷ 395 TFLOPS ≈ <b>0.14 ms</b> —— 只占 <b>0.3%</b>,算力单元 <em>99.7% 时间在等权重</em>。</li>
+    <li><span class="tag t-mem">KV IO</span>这是<em>混合架构</em>(64 层里仅 16 层 full-attn 有 KV,48 层线性注意力是定长状态)。每 context-token 约 64 KB → 8K 上下文 ≈ <b>0.4 ms</b>、32K ≈ <b>1.7 ms</b>。相对 45ms 的权重 IO 仍是小头,但长档时占比上升。</li>
+  </ul>
+</div>
+
+<figure>
+<svg viewBox="0 0 900 250" role="img" aria-label="decode与prefill资源占比条形">
+  <text x="24" y="26" font-size="16" font-weight="700" fill="#1f2328">一次前向,时间都花在哪(实测换算)</text>
+  <!-- decode bar -->
+  <text x="30" y="66" font-size="14" font-weight="700" fill="#0369a1">decode(M=1,8K 上下文)</text>
+  <rect x="30" y="76" width="740" height="38" rx="6" fill="#e5e7eb"/>
+  <rect x="30" y="76" width="700" height="38" rx="6" fill="#2563eb"/>
+  <rect x="730" y="76" width="30" height="38" fill="#60a5fa"/>
+  <rect x="762" y="76" width="8" height="38" fill="#ef4444"/>
+  <text x="360" y="100" font-size="13" fill="#fff" text-anchor="middle" font-weight="700">权重 IO ≈ 95%</text>
+  <text x="742" y="132" font-size="11" fill="#1e40af" text-anchor="middle">KV~4%</text>
+  <text x="785" y="100" font-size="11" fill="#b91c1c">计算 0.3%</text>
+  <!-- prefill bar -->
+  <text x="30" y="172" font-size="14" font-weight="700" fill="#b91c1c">prefill(大 GEMM,长档)</text>
+  <rect x="30" y="182" width="740" height="38" rx="6" fill="#e5e7eb"/>
+  <rect x="30" y="182" width="430" height="38" rx="6" fill="#dc2626"/>
+  <rect x="460" y="182" width="270" height="38" fill="#f59e0b"/>
+  <rect x="730" y="182" width="40" height="38" fill="#a78bfa"/>
+  <text x="245" y="206" font-size="13" fill="#fff" text-anchor="middle" font-weight="700">投影 GEMM 计算 O(S)</text>
+  <text x="595" y="206" font-size="12.5" fill="#fff" text-anchor="middle" font-weight="700">注意力 O(S²)↑</text>
+  <text x="750" y="240" font-size="11" fill="#6d28d9" text-anchor="middle">KV写</text>
+  <text x="365" y="240" font-size="11" fill="#6b7280">权重 IO 被 S 个 token 复用摊薄 → 每 token 近乎为 0</text>
+</svg>
+<figcaption style="margin-top:2px">两种模式,瓶颈完全相反:decode <b>权重 IO 一家独大</b>(量化权重直接见效);prefill 是<b>计算</b>撑满算力,且随序列变长,<b>注意力 O(S²) 那块会越来越粗</b>——下面用实测展开。</figcaption>
+</figure>
+
+<h3>把 prefill 也展开:投影 GEMM 是 O(S),注意力是 O(S²)</h3>
+<p>prefill 一次吞下整段 prompt(S 个 token),它的"计算"其实是两种<em>增长速度不同</em>的东西叠加:</p>
+<ul>
+  <li><span class="tag t-cmp">投影 GEMM</span>QKV / O / gate_up / down 这些线性层,FLOPs = <span class="fx">S·K·N</span>,随 token 数<em>线性</em>增长 = <b>O(S)</b>。它们是标准的大矩阵乘,<em>计算受限、贴着算力峰值</em>。</li>
+  <li><span class="tag t-cmp">注意力</span>QKᵀ 和 softmax·V 要让每个 token 看所有 token,FLOPs = <span class="fx">S²·d</span>,随长度<em>平方</em>增长 = <b>O(S²)</b>。短档不起眼,长档会反超一切。</li>
+</ul>
+
+<div class="exp"><span class="lbl">实验 C · expC.py · 投影 [5120×17408] vs 单层注意力(24 头×256)</span>
+<div class="data">
+<span class="m">     S    投影GEMM   注意力(单层)   attn/GEMM    翻倍规律</span>
+   512      <span class="g">0.290</span>ms      0.178ms       0.61     基准
+  1024      0.536ms      0.552ms       1.03     GEMM×1.85 attn×3.1
+  2048      0.923ms      1.863ms       2.02     GEMM×1.72 attn×3.37
+  4096      1.833ms      5.932ms       3.24     GEMM×1.99 attn×3.18
+  8192      <span class="y">3.645</span>ms     <span class="r">23.699</span>ms       <span class="r">6.50</span>     GEMM<span class="g">×2</span> attn<span class="r">×4</span>
+</div></div>
+<p>实测把两条定律钉死了:<b>S 每翻一倍,GEMM ×2(O(S) 铁证),注意力 ×3.2–4(O(S²) 铁证)</b>。
+attn/GEMM 从 0.61 一路涨到 6.50——<em>注意力在 S≈1K 后就反超投影,长档时是绝对主力</em>。这正是 prefill 优化的真正战场。</p>
+
+<figure>
+<svg viewBox="0 0 900 320" role="img" aria-label="prefill O(S) vs O(S²) 增长">
+  <text x="24" y="26" font-size="16" font-weight="700" fill="#1f2328">投影 GEMM(线性)vs 注意力(平方):越长差距越悬殊</text>
+  <line x1="70" y1="270" x2="850" y2="270" stroke="#cbd5e1" stroke-width="1.5"/>
+  <line x1="70" y1="50" x2="70" y2="270" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="455" y="305" font-size="13" fill="#6b7280" text-anchor="middle">序列长度 S:  512 · 1024 · 2048 · 4096 · 8192</text>
+  <text x="60" y="60" font-size="11" fill="#6b7280" text-anchor="end">ms</text>
+  <!-- scale: 23.7ms -> y=60, 0 -> 270. 210px/23.7 = 8.86 px/ms -->
+  <!-- GEMM (blue, ~linear low) x: 512->130 1024->300 2048->470 4096->640 8192->810 -->
+  <polyline fill="none" stroke="#dc2626" stroke-width="3"
+    points="130,268 300,265 470,254 640,217 810,60"/>
+  <text x="700" y="120" font-size="13" fill="#b91c1c" font-weight="700">注意力 O(S²)</text>
+  <polyline fill="none" stroke="#2563eb" stroke-width="3"
+    points="130,267 300,265 470,262 640,254 810,238"/>
+  <text x="660" y="250" font-size="13" fill="#1e40af" font-weight="700">投影 GEMM O(S)</text>
+  <!-- points -->
+  <g fill="#dc2626"><circle cx="130" cy="268" r="4"/><circle cx="300" cy="265" r="4"/><circle cx="470" cy="254" r="4"/><circle cx="640" cy="217" r="4"/><circle cx="810" cy="60" r="4"/></g>
+  <g fill="#2563eb"><circle cx="130" cy="267" r="4"/><circle cx="300" cy="265" r="4"/><circle cx="470" cy="262" r="4"/><circle cx="640" cy="254" r="4"/><circle cx="810" cy="238" r="4"/></g>
+  <text x="815" y="52" font-size="11" fill="#b91c1c">23.7ms</text>
+  <text x="815" y="252" font-size="11" fill="#1e40af">3.6ms</text>
+</svg>
+<figcaption>同样是"计算",两条曲线的斜率完全不同。8192 时单层注意力(23.7ms)已是投影 GEMM(3.6ms)的 6.5 倍——这解释了为什么长 prompt 的 TTFT 会超线性膨胀。</figcaption>
+</figure>
+
+<div class="callout">
+  <div class="t">对上真实 TTFT:长档确实超线性</div>
+  <p style="margin:6px 0">我们实测的 prefill 首 token 延迟(TTFT):<b>8K = 2790ms、16K = 5371ms、32K = 11423ms</b>。</p>
+  <ul style="margin:6px 0">
+    <li>8K→16K:5371/2790 = <b>1.93×</b>(token 翻倍,近似线性——这个长度还是投影 GEMM 为主)。</li>
+    <li>16K→32K:11423/5371 = <b>2.13×</b>(token 翻倍却涨了 2.13 倍——<em>超线性开始显现,正是 O(S²) 注意力在抬头</em>)。</li>
+  </ul>
+  <p style="margin:6px 0"><b>救星是混合架构</b>:这个模型 64 层里只有 <em>16 层是 full-attention(O(S²)),另外 48 层是 GDN 线性注意力(O(S))</em>。
+  正因如此,它的 TTFT 增长比"纯注意力模型"温和得多——否则 32K 早就爆炸了。</p>
+</div>
+
+<div class="callout good">
+  <div class="t">一句话对比 decode 与 prefill(优化方向截然相反)</div>
+  <p style="margin:6px 0"><b>decode</b> = 访存受限,瓶颈是<em>权重带宽</em> → 减字节(量化);
+  <b>prefill</b> = 计算受限,投影 GEMM 已到算力峰值(≈397 TFLOPS)几乎无空间,瓶颈随长度转移到<em>注意力 O(S²)</em> → flash-attention(S×S 不落显存)。
+  注意:<em>量化对 prefill 帮助很小</em>(权重已被 S 个 token 摊薄,反而多一步反量化),这正是我们 down 量化拖累 16–32K 长档的原因。</p>
+</div>
+
+<div class="hipbox">
+  <div class="t">DCU / HIP 视角</div>
+  <p style="margin:6px 0">这个结论是<em>硬件无关</em>的,NVIDIA / DCU 一样:decode 访存受限、prefill 计算受限。落到 gfx936 上:
+  decode 的 GEMV 用手写 HIP 核榨带宽(<code>__builtin_nontemporal_load</code> 流式读、wave64 一行、<code>__shfl_xor</code> 规约);
+  prefill 的大 GEMM 交给 <code>rocBLAS / hipBLASLt</code> 上 Matrix Core(对标 cuBLAS + Tensor Core)。诊断带宽用 <code>rocprof / omniperf</code> 看 <code>MemUnitBusy</code>,对标 <code>ncu</code> 的 DRAM Throughput。</p>
+</div>
+
+<!-- ============ Part 2 ============ -->
+<h2 id="p2"><span class="n">2</span>为什么双缓冲没效果、并发也上不去</h2>
+<p class="lead">先把工具的作用说准:<b>双缓冲(软件流水)和高占用率,都是用来"藏内存延迟"的。</b>
+它们能不能帮上忙,取决于你到底被什么卡住——被<em>延迟</em>卡住,它们有用;被<em>带宽</em>卡住,它们<b>一点用没有</b>。</p>
+
+<h3>延迟受限 vs 带宽受限:两码事</h3>
+<div class="two">
+  <div class="card">
+    <h4>延迟受限(latency-bound)</h4>
+    <p>波太少,一个 load 发出去要等几百周期才回来,期间计算单元干等。<b>此时</b>双缓冲/多波并发能把等待藏起来 → 提速明显。</p>
+  </div>
+  <div class="card">
+    <h4>带宽受限(bandwidth-bound)</h4>
+    <p>HBM 已经在满速吐数据,瓶颈是"管子粗细"不是"等回信"。<b>此时</b>再多波、再双缓冲,也不能让管子变粗 → 提速为零。</p>
+  </div>
+</div>
+
+<h3>实测:同一个 GEMV,写"有双缓冲"和"无双缓冲"两个核对比</h3>
+<div class="exp"><span class="lbl">实验 B · dbocc.hip/py · 实测 HBM 峰值 1206 GB/s</span>
+<div class="data">
+<span class="m">    shape  WPB |  nodb GB/s   db GB/s  db/nodb |  占峰值%(db)</span>
+  gate_up    1 |       1122      1134    <span class="g">1.011</span> |     94.0%
+  gate_up    2 |       <span class="g">1217</span>      <span class="g">1218</span>    1.001 |    <span class="g">101.0%</span>
+  gate_up    4 |       1108      1113    1.005 |     92.3%
+  gate_up    8 |       1121      1106    <span class="r">0.987</span> |     91.8%
+     down    1 |       1166      1163    0.998 |     96.4%
+     down    2 |       1160      1162    1.001 |     96.3%
+     down    4 |       1146      1151    1.004 |     95.5%
+     down    8 |       1152      1171    1.016 |     97.1%
+</div></div>
+
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="双缓冲vs无双缓冲带宽">
+  <text x="24" y="28" font-size="16" font-weight="700" fill="#1f2328">有无双缓冲?两条线几乎重合,且都贴着 HBM 峰值</text>
+  <!-- peak line -->
+  <line x1="80" y1="80" x2="850" y2="80" stroke="#16a34a" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="855" y="84" font-size="12" fill="#15803d" text-anchor="end">HBM 峰值 1206 GB/s</text>
+  <!-- y axis -->
+  <line x1="80" y1="60" x2="80" y2="250" stroke="#cbd5e1"/>
+  <text x="72" y="84" font-size="11" fill="#6b7280" text-anchor="end">1206</text>
+  <text x="72" y="180" font-size="11" fill="#6b7280" text-anchor="end">1000</text>
+  <!-- bars for gate_up WPB 1,2,4,8 -->
+  <g font-size="11" fill="#6b7280" text-anchor="middle">
+    <!-- map ~1120->110px, peak 80px; scale -->
+    <!-- nodb (blue) / db (violet) pairs -->
+    <!-- gate_up -->
+    <rect x="120" y="95" width="26" height="155" fill="#60a5fa"/><rect x="148" y="93" width="26" height="157" fill="#a78bfa"/>
+    <text x="147" y="268">WPB1</text>
+    <rect x="200" y="79" width="26" height="171" fill="#60a5fa"/><rect x="228" y="79" width="26" height="171" fill="#a78bfa"/>
+    <text x="227" y="268">WPB2</text>
+    <rect x="280" y="100" width="26" height="150" fill="#60a5fa"/><rect x="308" y="99" width="26" height="151" fill="#a78bfa"/>
+    <text x="307" y="268">WPB4</text>
+    <rect x="360" y="96" width="26" height="154" fill="#60a5fa"/><rect x="388" y="100" width="26" height="150" fill="#a78bfa"/>
+    <text x="387" y="268">WPB8</text>
+    <text x="267" y="286" fill="#1f2328" font-weight="700">gate_up 34816×5120</text>
+  </g>
+  <g font-size="11" fill="#6b7280" text-anchor="middle">
+    <rect x="500" y="88" width="26" height="162" fill="#60a5fa"/><rect x="528" y="89" width="26" height="161" fill="#a78bfa"/>
+    <text x="527" y="268">WPB1</text>
+    <rect x="580" y="89" width="26" height="161" fill="#60a5fa"/><rect x="608" y="89" width="26" height="161" fill="#a78bfa"/>
+    <text x="607" y="268">WPB2</text>
+    <rect x="660" y="91" width="26" height="159" fill="#60a5fa"/><rect x="688" y="90" width="26" height="160" fill="#a78bfa"/>
+    <text x="687" y="268">WPB4</text>
+    <rect x="740" y="90" width="26" height="160" fill="#60a5fa"/><rect x="768" y="87" width="26" height="163" fill="#a78bfa"/>
+    <text x="767" y="268">WPB8</text>
+    <text x="647" y="286" fill="#1f2328" font-weight="700">down 5120×17408</text>
+  </g>
+  <!-- legend -->
+  <rect x="120" y="45" width="14" height="14" fill="#60a5fa"/><text x="140" y="57" font-size="12" fill="#3a4149">无双缓冲</text>
+  <rect x="210" y="45" width="14" height="14" fill="#a78bfa"/><text x="230" y="57" font-size="12" fill="#3a4149">双缓冲</text>
+</svg>
+<figcaption>八组配置里,双缓冲相对无双缓冲的差异全在 <b>±1.5%</b>(即测量噪声)以内;而且<b>无双缓冲版本本身就已经跑到 HBM 峰值的 92–101%</b>。结论无可辩驳:GEMV 早已撞到带宽墙。</figcaption>
+</figure>
+
+<h3>那 VGPR=58 / LDS=32 不高,为什么反而是"双缓冲没用"的原因?</h3>
+<p>这正是关键、也最反直觉的一点:</p>
+<ol>
+  <li><b>VGPR/LDS 低 = 占用率高 = 常驻的 wave 很多。</b>GEMV 每行一个 wave,一个 <code>gate_up</code> 就是 <em>34816 个 wave</em> 排队;
+  资源又省(58 VGPR),每个 SIMD 上能同时驻留满额的 wave。</li>
+  <li><b>占用率高,硬件自己就把内存延迟藏掉了。</b>GPU 的看家本领是"一个 wave 等 load 时,立刻切到另一个 wave 算"。
+  常驻 wave 一多,总有 wave 可算,<em>访存延迟被 wave 切换天然覆盖</em>——这件事双缓冲也想做,可硬件已经做完了。</li>
+  <li><b>所以你手写的双缓冲是"重复劳动",自然没有增量。</b>软件双缓冲真正救得了的,是<em>占用率低</em>的场景(VGPR 爆了、每 SIMD 只剩一两个 wave,切无可切,只能靠软件流水提前预取)。你 VGPR 才 58、占用率高,轮不到它出场。</li>
+  <li><b>并发"上不去"的错觉</b>:不是并发不够,而是<em>并发早已过剩</em>。几千个 wave 抢的是同一条 HBM 通道,一旦通道满速,再加并发只是排更长的队 → 带宽不涨、延迟反而略增。<em>共享资源(带宽)的瓶颈,加并行度是解不开的。</em></li>
+</ol>
+
+<div class="callout warn">
+  <div class="t">"只做了热点算子" —— 另一个让你觉得"没提速"的坑(Amdahl)</div>
+  <p style="margin:6px 0">就算把热点 GEMV 榨到峰值,端到端 TPOT 也可能纹丝不动,因为 decode 每个 token 要跑<em>几十个算子</em>:
+  RMSNorm、rope、逐元素、sampling(大词表 softmax/topk)、还有算子之间的 <b>kernel launch 开销与同步空隙</b>。</p>
+  <ul style="margin:6px 0">
+    <li>热点算子从 100% 峰值再优化,收益趋于 0;而<em>没碰的那些小算子 + 每次 launch 的几微秒 × 几十次 × 每 token</em> 累积起来可能才是新的大头(用图捕获消 launch、算子融合减往返即可,这里不展开)。</li>
+  </ul>
+</div>
+
+<h3>怎么快速自查"我到底被什么卡住"</h3>
+<div class="band">
+  <ol>
+    <li><b>算 roofline</b>:测你核的达成带宽(字节÷时间),除以 HBM 峰值。<em>≥85% 就是带宽墙</em>——别再碰双缓冲/占用率,去减字节。</li>
+    <li><b>看 profiler</b>(<code>rocprof / omniperf</code>):<code>MemUnitBusy≈100%</code> 且 <code>VALUBusy</code> 很低 → 访存受限;若 <code>MemUnitStalled</code> 高但 <code>MemUnitBusy</code> 不满 → 才是延迟受限(这时双缓冲/提占用才有用)。</li>
+    <li><b>看 VGPR/LDS 判断占用率天花板</b>:低(如 58/32)= 占用率不是限制 → 更加说明"提占用/双缓冲无空间"。</li>
+  </ol>
+</div>
+
+<div class="callout good">
+  <div class="t">结论:带宽墙下,方向只有"减字节"</div>
+  <p style="margin:6px 0">被带宽卡死时,双缓冲、提占用率都<em>不在有效范围内</em>(你已经在墙上了)。真正的方向是<b>减少要搬的字节</b>——权重 int8/int4 量化(读一半字节、时间近乎减半),这就是我们把 TPOT 从 ~49ms 压到 ~40ms 的主武器;其余靠对齐流式读提有效带宽、图融合减 launch,不再展开。</p>
+</div>
+
+<div class="foot">
+  <p>海光 DCU(gfx936 / wave64)· 大模型推理访存瓶颈实测讲义 · 所有数字来自 <code>expA.py</code> 与 <code>dbocc.hip/py</code> 微基准</p>
+  <p>一句话:<b>decode 被权重带宽钉死,双缓冲/占用率是藏延迟的、治不了带宽墙;要快就减字节(量化)、提有效带宽、减算子间开销。</b></p>
+</div>
+
+</div>
+</body>
+</html>

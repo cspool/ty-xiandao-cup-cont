@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU 推理优化 · 第三集：把带宽喂满 —— 带宽利用率优化与对应算子优化</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] }, svg: { fontCache: 'global' } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+  :root{
+    --bg:#f6f8fc; --paper:#ffffff; --ink:#1f2937; --sub:#5b6675;
+    --line:#e6ebf2; --blue:#2563eb; --blue2:#3b82f6; --cyan:#0ea5e9;
+    --amber:#f59e0b; --green:#10b981; --red:#ef4444; --violet:#7c3aed;
+    --code-bg:#0f172a; --code-ink:#e2e8f0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.8;font-size:16px}
+  .wrap{max-width:980px;margin:0 auto;padding:0 22px 80px}
+
+  /* 顶部 */
+  header{background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 55%,#0ea5e9 100%);
+    color:#fff;padding:46px 40px 40px;border-radius:0 0 26px 26px;
+    box-shadow:0 10px 30px rgba(37,99,235,.25);position:relative;overflow:hidden}
+  header::after{content:"";position:absolute;right:-60px;top:-60px;width:240px;height:240px;
+    background:radial-gradient(circle,rgba(255,255,255,.18),transparent 70%);border-radius:50%}
+  .series{display:inline-block;font-size:13px;letter-spacing:2px;background:rgba(255,255,255,.18);
+    padding:5px 14px;border-radius:20px;margin-bottom:14px}
+  header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:.5px}
+  header p{margin:12px 0 0;font-size:15.5px;opacity:.95;max-width:760px}
+
+  h2{font-size:23px;margin:46px 0 14px;padding-left:14px;border-left:6px solid var(--blue);
+    color:#16223a}
+  h3{font-size:18.5px;margin:28px 0 8px;color:#1e3a8a}
+  p{margin:10px 0}
+  .lead{color:var(--sub)}
+  code.inl{background:#eef2ff;color:#3730a3;padding:1px 7px;border-radius:5px;
+    font-family:"Consolas","SF Mono",monospace;font-size:14px}
+  b{color:#0b1f44}
+
+  /* 卡片 */
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:16px;
+    padding:20px 24px;margin:18px 0;box-shadow:0 4px 14px rgba(20,40,80,.05)}
+
+  /* 提示框 */
+  .note{border-radius:12px;padding:14px 18px;margin:16px 0;border-left:5px solid;font-size:15px}
+  .note .t{font-weight:700;margin-right:6px}
+  .tip{background:#ecfdf5;border-color:var(--green)}
+  .warn{background:#fff7ed;border-color:var(--amber)}
+  .key{background:#eff6ff;border-color:var(--blue)}
+  .danger{background:#fef2f2;border-color:var(--red)}
+
+  /* 代码/伪代码 */
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:12px;
+    padding:16px 18px;overflow-x:auto;font-size:13.5px;line-height:1.65;
+    font-family:"Consolas","SF Mono",monospace;margin:14px 0}
+  pre .c{color:#64748b}        /* 注释 */
+  pre .k{color:#7dd3fc}        /* 关键词 */
+  pre .o{color:#fca5a5}        /* 运算/强调 */
+  .cap{font-size:13px;color:var(--sub);text-align:center;margin:6px 0 2px}
+
+  /* 公式块 */
+  .eq{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;
+    padding:6px 16px;margin:14px 0;overflow-x:auto}
+
+  /* 对照网格 */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  .mini{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .mini h4{margin:0 0 6px;font-size:16px;color:#1e3a8a}
+  .mini .s{font-size:14px;color:var(--sub)}
+
+  /* 步骤徽标 */
+  .badge{display:inline-flex;align-items:center;justify-content:center;
+    width:30px;height:30px;border-radius:9px;background:var(--blue);color:#fff;
+    font-weight:800;margin-right:10px;font-size:15px;vertical-align:middle}
+  .amberb{background:var(--amber)} .greenb{background:var(--green)} .violetb{background:var(--violet)}
+
+  svg{max-width:100%;height:auto;display:block;margin:6px auto}
+  .svgbox{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px;margin:16px 0}
+
+  ul.clean{padding-left:22px} ul.clean li{margin:6px 0}
+  .foot{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);color:var(--sub);font-size:14px}
+  a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+  .tag{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:6px;
+    padding:2px 9px;font-size:12.5px;margin:2px 4px 2px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap" style="padding:0">
+    <span class="series">GPU 推理优化系列 · 第三集</span>
+    <h1>把带宽喂满：带宽利用率优化与对应的算子优化</h1>
+    <p>上一集我们搞清了「decode 是带宽墙」。这一集只回答一个问题：<b style="color:#fde68a">既然撞了带宽墙，怎么把这堵墙的带宽真正榨满？</b>——为什么利用率上不去，以及每一种「提利用率」的算子优化手法背后的原理。只讲思路与原理，附 LaTeX、伪代码、内联示意图、HIP 适配与 GitHub。</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- 0 -->
+<h2>0 · 这一集要解决的问题</h2>
+<div class="card">
+<p>第二集的结论：自回归推理的 decode 阶段是 <b>memory-bound</b>——每生成一个 token，都要把整个模型权重从显存（HBM）读一遍，计算极少。它的速度下界是：</p>
+<div class="eq">$$ T_{\text{decode/token}} \;\gtrsim\; \frac{\text{每 token 需读取的权重字节数}}{B_{\text{HBM}}} $$</div>
+<p>这个下界由硬件带宽 $B_{\text{HBM}}$ 决定，<b>动不了</b>。但现实里，kernel 往往达不到这个下界——实测时间比理论下界大不少。差在哪？差在 <b>带宽利用率</b>。这一集就是讲怎么把利用率从「中位」推向「峰值」。</p>
+</div>
+
+<!-- 1 -->
+<h2>1 · 什么叫「把带宽喂满」</h2>
+<p>定义<b>带宽利用率</b> $\eta$：实际达成的访存带宽，占硬件峰值带宽的比例。</p>
+<div class="eq">$$ \eta=\frac{B_{\text{achieved}}}{B_{\text{peak}}}=\frac{\text{该 kernel 读写字节数}\,/\,\text{实测耗时}}{B_{\text{peak}}} $$</div>
+<p>在 Roofline 图上，memory-bound 的 kernel 落在<b>斜坡</b>上。「优化」对它而言不是往右（提算术强度），而是<b>把点沿斜坡往上顶，贴近那条带宽斜线</b>——也就是提高 $\eta$。</p>
+
+<div class="svgbox">
+<svg viewBox="0 0 720 300" role="img" aria-label="Roofline 上提升带宽利用率">
+  <line x1="70" y1="250" x2="690" y2="250" stroke="#94a3b8" stroke-width="1.5"/>
+  <line x1="70" y1="250" x2="70" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="380" y="288" font-size="13" fill="#5b6675" text-anchor="middle">算术强度 I（FLOPs/Byte）</text>
+  <text x="20" y="140" font-size="13" fill="#5b6675" transform="rotate(-90 20,140)">可达性能</text>
+  <!-- 斜坡 -->
+  <line x1="70" y1="250" x2="330" y2="70" stroke="#2563eb" stroke-width="3"/>
+  <!-- 平顶 -->
+  <line x1="330" y1="70" x2="690" y2="70" stroke="#2563eb" stroke-width="3"/>
+  <text x="500" y="60" font-size="13" fill="#2563eb">平顶 = 算力墙 (compute-bound)</text>
+  <text x="120" y="150" font-size="13" fill="#2563eb" transform="rotate(-35 120,150)">斜坡 = 带宽墙</text>
+  <!-- 低利用率点 -->
+  <circle cx="150" cy="222" r="7" fill="#ef4444"/>
+  <text x="160" y="227" font-size="12.5" fill="#ef4444">实测点：η 低，离斜线远（有肉）</text>
+  <!-- 箭头往上 -->
+  <line x1="150" y1="215" x2="150" y2="172" stroke="#10b981" stroke-width="2.5" marker-end="url(#ar)"/>
+  <!-- 目标点 -->
+  <circle cx="150" cy="160" r="7" fill="#10b981"/>
+  <text x="160" y="150" font-size="12.5" fill="#10b981">目标：贴上斜线，η→峰值（到墙）</text>
+  <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L6,3 L0,6 Z" fill="#10b981"/></marker></defs>
+</svg>
+<div class="cap">图 1 · memory-bound 的优化 = 把实测点沿带宽斜线往上顶（提利用率 η），而不是往右</div>
+</div>
+
+<div class="note key"><span class="t">关键认知</span>判断「还有没有优化空间」就看 $\eta$：$\eta$ 离 1 还远 → 有肉；$\eta\approx1$（贴斜线）→ 撞墙到顶。<b>这比看「GPU 忙不忙」靠谱得多。</b></div>
+
+<!-- 2 -->
+<h2>2 · 为什么带宽利用率上不去（四个元凶）</h2>
+<p>同样读 50 GB 权重，有人 60% 利用率、有人 95%，差距全在这四点：</p>
+<div class="grid">
+  <div class="mini"><h4>① 访存延迟没藏住</h4><div class="s">一条 load 指令发出，到数据真正回来，有几百个时钟周期延迟。如果计算单元发完 load 就干等，SM 大量空转——「忙着等内存」。</div></div>
+  <div class="mini"><h4>② 访存不合并（uncoalesced）</h4><div class="s">一个 wavefront/warp 里的线程若读的是<b>不连续地址</b>，硬件要拆成多次内存事务，每次只搬到一点有效数据，带宽白白浪费。</div></div>
+  <div class="mini"><h4>③ kernel 太碎</h4><div class="s">把一串小算子拆成很多个 kernel，每个都要把<b>中间结果写回 HBM、下一个再读回来</b>，凭空多出大量往返；外加每次 kernel 启动/图回放的固定开销。</div></div>
+  <div class="mini"><h4>④ 库的 kernel 不对路</h4><div class="s">通用 BLAS 库为「大方阵」优化。推理 decode 是 <b>M=1 的瘦长矩阵×向量</b>，套大矩阵 kernel 会严重浪费，利用率自然低。</div></div>
+</div>
+<div class="note tip"><span class="t">对应解法（下一节逐个讲）</span>① → 软件流水/双缓冲；② → 合并 + 对齐访存；③ → 算子融合；④ → 选对/手写专用 kernel。</div>
+
+<!-- 3 -->
+<h2>3 · 提带宽利用率的算子优化（逐个拆原理）</h2>
+
+<!-- 3.1 合并 -->
+<h3><span class="badge">A</span>内存合并访问（coalesced access）</h3>
+<p>让一个 wavefront 内相邻线程读相邻地址，凑满一次宽内存事务（典型 128 字节），把每次搬运的有效率拉满。再配合<b>宽 load</b>（一次读 128-bit，如 <code class="inl">float4</code>/<code class="inl">dwordx4</code>）和地址对齐，进一步减少事务数。</p>
+<div class="svgbox">
+<svg viewBox="0 0 720 150" role="img" aria-label="合并 vs 非合并访存">
+  <text x="60" y="22" font-size="13" fill="#ef4444" font-weight="700">非合并：地址跳跃 → 多次事务，大量浪费</text>
+  <g>
+    <rect x="60" y="32" width="36" height="22" fill="#fecaca" stroke="#ef4444"/>
+    <rect x="140" y="32" width="36" height="22" fill="#fecaca" stroke="#ef4444"/>
+    <rect x="220" y="32" width="36" height="22" fill="#fecaca" stroke="#ef4444"/>
+    <rect x="300" y="32" width="36" height="22" fill="#fecaca" stroke="#ef4444"/>
+    <text x="360" y="48" font-size="12" fill="#5b6675">… 4 个线程 → 4 次事务</text>
+  </g>
+  <text x="60" y="96" font-size="13" fill="#10b981" font-weight="700">合并：连续地址 → 一次事务搬满</text>
+  <g>
+    <rect x="60" y="106" width="36" height="22" fill="#bbf7d0" stroke="#10b981"/>
+    <rect x="96" y="106" width="36" height="22" fill="#bbf7d0" stroke="#10b981"/>
+    <rect x="132" y="106" width="36" height="22" fill="#bbf7d0" stroke="#10b981"/>
+    <rect x="168" y="106" width="36" height="22" fill="#bbf7d0" stroke="#10b981"/>
+    <text x="220" y="122" font-size="12" fill="#5b6675">4 个线程 → 1 次事务</text>
+  </g>
+</svg>
+<div class="cap">图 2 · 合并访存把「搬运有效率」从碎片拉到接近 100%</div>
+</div>
+
+<!-- 3.2 double buffer -->
+<h3><span class="badge greenb">B</span>软件流水 / 双缓冲（藏访存延迟）—— memory-bound 的头号杠杆</h3>
+<p>核心思想：<b>在算当前这块数据时，提前把下一块的 load 发出去</b>。用两组缓冲（寄存器或 LDS）轮转，让 global load 的长延迟和计算重叠，而不是串行等待。理想情况下每一拍的有效耗时从「读+算」变成「读、算的较大者」：</p>
+<div class="eq">$$ T_{\text{串行}}=\sum (T^{(i)}_{\text{load}}+T^{(i)}_{\text{compute}})\;\;\Longrightarrow\;\; T_{\text{流水}}\approx T_{\text{load}}^{(0)}+\sum \max\!\big(T^{(i)}_{\text{load}},T^{(i)}_{\text{compute}}\big) $$</div>
+<p>对纯 memory-bound（compute 极小）的 decode，效果就是把「等内存的空转」填掉，利用率显著上抬。</p>
+<pre><span class="c"># 伪代码：双缓冲软件流水（A/B 两组缓冲轮转）</span>
+prefetch <span class="k">load</span> block[0] <span class="o">→</span> buf[0]          <span class="c"># 先发第一块的 load</span>
+<span class="k">for</span> i <span class="k">in</span> 0 .. N-1:
+    <span class="k">if</span> i+1 &lt; N:
+        prefetch <span class="k">load</span> block[i+1] <span class="o">→</span> buf[(i+1)%2]  <span class="c"># 发下一块(异步,不等)</span>
+    wait(buf[i%2])                            <span class="c"># 只等当前这块就绪</span>
+    compute(buf[i%2])  <span class="o">// 与上面的 load 在硬件上重叠执行</span>
+</pre>
+<div class="svgbox">
+<svg viewBox="0 0 720 170" role="img" aria-label="串行 vs 双缓冲流水">
+  <text x="60" y="20" font-size="13" fill="#ef4444" font-weight="700">串行：load 和 compute 排队，SM 等内存</text>
+  <rect x="60" y="28" width="90" height="20" fill="#fca5a5"/><text x="105" y="43" font-size="11" text-anchor="middle">load0</text>
+  <rect x="150" y="28" width="40" height="20" fill="#93c5fd"/><text x="170" y="43" font-size="11" text-anchor="middle">cmp0</text>
+  <rect x="190" y="28" width="90" height="20" fill="#fca5a5"/><text x="235" y="43" font-size="11" text-anchor="middle">load1</text>
+  <rect x="280" y="28" width="40" height="20" fill="#93c5fd"/><text x="300" y="43" font-size="11" text-anchor="middle">cmp1</text>
+  <text x="330" y="43" font-size="12" fill="#5b6675">→ 时间长</text>
+
+  <text x="60" y="105" font-size="13" fill="#10b981" font-weight="700">双缓冲：load 与 compute 重叠</text>
+  <rect x="60" y="113" width="90" height="20" fill="#fca5a5"/><text x="105" y="128" font-size="11" text-anchor="middle">load0</text>
+  <rect x="150" y="113" width="90" height="20" fill="#fca5a5"/><text x="195" y="128" font-size="11" text-anchor="middle">load1</text>
+  <rect x="240" y="113" width="90" height="20" fill="#fca5a5"/><text x="285" y="128" font-size="11" text-anchor="middle">load2</text>
+  <rect x="150" y="135" width="40" height="18" fill="#93c5fd"/><text x="170" y="149" font-size="10" text-anchor="middle">cmp0</text>
+  <rect x="240" y="135" width="40" height="18" fill="#93c5fd"/><text x="260" y="149" font-size="10" text-anchor="middle">cmp1</text>
+  <text x="345" y="128" font-size="12" fill="#5b6675">→ 时间被 load 带宽决定（喂满）</text>
+</svg>
+<div class="cap">图 3 · 双缓冲把计算藏进 load 的「影子」里，时间退化为「读带宽」本身 = 喂满 HBM</div>
+</div>
+
+<!-- 3.3 fusion -->
+<h3><span class="badge violetb">C</span>算子融合（减 HBM 往返 + 减 kernel 数）</h3>
+<p>把数据流上连续的几个小算子合进<b>一个 kernel</b>：中间结果留在寄存器/LDS、<b>不落回 HBM</b>，下一步直接用。既省掉中间张量的写出+读回（带宽），又减少 kernel 个数（启动/图回放的固定 gap）。</p>
+<div class="grid">
+  <div class="mini"><h4>融合前</h4><div class="s">norm → 写 HBM → 读 HBM → 激活 → 写 HBM → 读 HBM → 残差…<br>每个箭头都是一次 HBM 往返。</div></div>
+  <div class="mini"><h4>融合后</h4><div class="s">一个 kernel 内：norm·激活·残差全在寄存器里串起来，<b>只读一次输入、只写一次输出</b>。</div></div>
+</div>
+<div class="note tip"><span class="t">经典范例</span>注意力的 tiling + online-softmax（FlashAttention 思路），就是把「QKᵀ→softmax→×V」融成一趟、避免把巨大的注意力矩阵写回 HBM——本质是<b>用融合消灭中间结果的带宽</b>。</div>
+<div class="note warn"><span class="t">注意</span>融合不是越多越好：受限于寄存器/LDS 容量；过度融合会降 occupancy。而且很多框架的编译器（如 inductor 的 combo kernels）已自动融了一批小算子，<b>手融前先看它融了没</b>，别做无用功。</div>
+
+<!-- 3.4 right kernel -->
+<h3><span class="badge amberb">D</span>选对 / 手写专用 kernel（瘦长 GEMV）</h3>
+<p>推理 decode 的线性层是 $M=1$ 的矩阵×向量（GEMV）：权重矩阵很大、激活只有一列。通用 GEMM 库按「大方阵 tile」切，处理 $M=1$ 时一个 tile 的绝大部分行是浪费，带宽利用率上不去。对策是走<b>专门的 GEMV 路径</b>，或针对该形状<b>手写 kernel</b>：一个 wavefront 负责若干输出行、流式读权重、wave 内规约、配合上面的合并访存 + 双缓冲。</p>
+<pre><span class="c"># 伪代码：M=1 GEMV，一个 wave 算若干输出行（要点而非实现）</span>
+<span class="k">each</span> wavefront <span class="o">→</span> 负责输出向量的 ROWS 行:
+    acc[ROWS] = 0                      <span class="c"># 累加器常驻寄存器</span>
+    <span class="k">for</span> 每个 K 分块 (配双缓冲预取):
+        w = <span class="k">load</span> 权重该分块   <span class="c"># 合并 + 宽 load + non-temporal</span>
+        x = 共享的激活分块       <span class="c"># 放 LDS/寄存器，全 wave 复用</span>
+        acc += dot(w, x)               <span class="c"># 乘加</span>
+    acc = wave_reduce(acc)             <span class="c"># wave 内规约(shuffle)</span>
+    <span class="k">write</span> acc <span class="o">→</span> 输出
+</pre>
+<div class="note key"><span class="t">判断要不要自己写</span>先 A/B：拿库默认 kernel 和候选实现各测一遍达成带宽。只有当库在这个形状上明显没喂满（$\eta$ 低）时，手写才有意义；库已接近峰值就别硬刚。</div>
+
+<!-- 3.5 nt + reuse -->
+<h3><span class="badge">E</span>流式读 + 数据复用（少读、绕 cache）</h3>
+<ul class="clean">
+<li><b>non-temporal / streaming load</b>：权重在 decode 里<b>只读一次、不再复用</b>，让它绕过 cache，避免污染、把缓存留给真正会重用的数据。</li>
+<li><b>寄存器 / LDS 驻留复用</b>：能复用的数据只从 HBM 读一次，之后留在片上反复用。例如分组注意力（GQA）里多个 query head 共享同一份 K/V——<b>读一次供多头复用</b>，把这部分的有效带宽需求直接除以分组数。</li>
+</ul>
+<div class="eq">$$ \text{有效读量}_{\text{复用后}}=\frac{\text{有效读量}_{\text{朴素}}}{\text{复用倍数}}\quad\Rightarrow\quad \text{同样带宽下耗时下降} $$</div>
+
+<!-- 4 -->
+<h2>4 · 怎么判断「到顶了」</h2>
+<div class="card">
+<p>有了带宽利用率这把尺子，判断就很干脆：</p>
+<pre><span class="c"># 用「纯读探针」标定该卡真实可持续带宽，再判断 kernel 到没到墙</span>
+B_probe = 跑一个<span class="k">只读不算</span>的 kernel 测得的 GB/s   <span class="c"># 该卡真实上限(比规格可信)</span>
+T_floor = kernel 读写字节数 / B_probe              <span class="c"># 理论下界</span>
+eta     = T_floor / 实测耗时
+<span class="k">if</span> eta &gt; 0.9: <span class="o">"贴峰值,撞带宽墙,这条路到顶 → 换思路"</span>
+<span class="k">elif</span> eta &lt; 0.7: <span class="o">"没喂满 → 上 合并/双缓冲/融合/专用kernel"</span>
+</pre>
+<p>当所有热点 kernel 的 $\eta$ 都贴近峰值、且能融的中间结果都融掉了，<b>就说明在「合规、不改精度」的前提下，带宽这条路已经到物理天花板</b>——剩下的只能去碰算法层（而那往往受赛题规则约束）。</p>
+</div>
+
+<!-- 5 HIP -->
+<h2>5 · 在 HIP / 国产加速卡（DCU）上怎么落地</h2>
+<p>上面的原理<b>硬件无关</b>——带宽墙是 HBM 的物理属性。换到 ROCm/HIP 体系（国产 DCU、AMD），只是工具和一些细节不同：</p>
+<div class="card">
+<pre><span class="c">能力 / 概念        CUDA(NVIDIA)        HIP/ROCm(AMD · 海光DCU)</span>
+监控               nvidia-smi          rocm-smi / hy-smi
+kernel profiler    Nsight Compute      rocprof / omniperf(可出 Roofline)
+设备/架构信息      deviceQuery         rocminfo
+线程束             warp = 32           wavefront = <span class="o">64</span> (gfx9)
+片上暂存           shared memory       LDS
+宽 load            float4 / ld.128     dwordx4 / global_load
+BLAS               cuBLAS/cuBLASLt     rocBLAS / hipBLASLt
+低精度矩阵单元     Tensor Core         Matrix Core (MFMA/mmac)
+</pre>
+</div>
+<ul class="clean">
+<li><b>测利用率</b>：用 <code class="inl">omniperf</code> 出 Roofline、看 memory throughput；峰值带宽用「纯读探针」实测（同上）。</li>
+<li><b>wavefront = 64</b>：跨线程规约、<code class="inl">__shfl</code> 宽度是 64，从 CUDA 搬 kernel 时最易踩错。</li>
+<li><b>双缓冲/合并/non-temporal</b>：思路完全通用，HIP 同样支持异步 load、宽 load、流式提示。</li>
+<li><b>库要 A/B</b>：rocBLAS / hipBLASLt 在 $M=1$ 这种瘦长形状上的默认选择不一定最优，务必两个都测、选达成带宽高的。</li>
+<li><b>inline asm 与矩阵核</b>：HIP 也能内联汇编调矩阵指令，但不同代/厂商的指令助记符可能不同（编译器内建函数在定制工具链里可能缺，需用对应汇编指令）——国产卡移植的常见坑。</li>
+<li><b>gfx9 部署</b>：容器映射 <code class="inl">/dev/kfd /dev/dri</code>、设对 <code class="inl">HSA_OVERRIDE_GFX_VERSION</code>；为新架构优化的算子库在老 gfx 上可能反而更慢，按实测开关。</li>
+</ul>
+<div class="note tip"><span class="t">一句话</span>方法论一字不变（Roofline 判墙、盯带宽利用率），只换工具（omniperf）、注意 wave64 与库后端选择。<b>「把带宽喂满」在国产卡上同样是 decode 优化的主战场。</b></div>
+
+<!-- 6 ref -->
+<h2>6 · 推荐参考（GitHub / 资料）</h2>
+<div class="card">
+<ul class="clean">
+<li><b>FlashAttention</b> · <code class="inl">github.com/Dao-AILab/flash-attention</code> —— 算子融合消灭中间带宽的范本（tiling + online softmax）。</li>
+<li><b>vLLM</b> · <code class="inl">github.com/vllm-project/vllm</code> —— 工程化的推理框架，PagedAttention、连续批处理、CUDA Graph。</li>
+<li><b>flash-linear-attention (FLA)</b> · <code class="inl">github.com/fla-org/flash-linear-attention</code> —— 线性注意力 / SSM 的高效融合 kernel。</li>
+<li><b>CUTLASS</b> · <code class="inl">github.com/NVIDIA/cutlass</code> —— GEMM/GEMV 的 tiling、双缓冲、流水范式教科书级实现。</li>
+<li><b>Triton</b> · <code class="inl">github.com/triton-lang/triton</code> —— 跨 NVIDIA/AMD 的 kernel 语言，看「融合 kernel 怎么写」的好入口。</li>
+<li><b>omniperf / ROCm</b> · <code class="inl">github.com/ROCm/omniperf</code> · <code class="inl">github.com/ROCm/HIP</code> —— 国产卡/AMD 上的 Roofline 分析与 HIP 移植。</li>
+<li><b>Roofline 原文</b> · Williams et al., <i>Roofline: An Insightful Visual Performance Model</i>, CACM 2009。</li>
+</ul>
+</div>
+<div style="margin-top:8px">
+  <span class="tag">#带宽利用率</span><span class="tag">#算子融合</span><span class="tag">#双缓冲</span><span class="tag">#GEMV</span>
+  <span class="tag">#Roofline</span><span class="tag">#HIP</span><span class="tag">#国产DCU</span><span class="tag">#大模型推理</span>
+</div>
+
+<!-- 7 -->
+<h2>7 · 小结</h2>
+<div class="card">
+<ul class="clean">
+<li>撞了带宽墙，优化目标就是<b>提带宽利用率 $\eta$</b>——把 Roofline 上的点沿斜线往上顶到贴峰值。</li>
+<li>利用率上不去的四个元凶：<b>延迟没藏住、访存不合并、kernel 太碎、库 kernel 不对路</b>。</li>
+<li>对应五招：<b>合并访存、双缓冲软件流水（头号杠杆）、算子融合、专用 GEMV kernel、流式读+数据复用</b>。</li>
+<li>用<b>纯读探针 + 利用率</b>判断到没到顶；$\eta\to$ 峰值即合规手段下的物理天花板。</li>
+<li>换 HIP / 国产卡，<b>原理不变</b>，只换工具（omniperf）、注意 wave64 与库 A/B。</li>
+</ul>
+</div>
+
+<div class="foot">
+GPU 推理优化系列 · 第三集 —— 把带宽喂满。本文只讲原理与思路，公式用 MathJax 渲染（需联网加载）。下一集预告：当带宽墙也到顶后，还能往哪看（算法层与规则边界）。
+</div>
+
+</div>
+</body>
+</html>
