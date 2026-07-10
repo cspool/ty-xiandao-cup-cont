@@ -1,0 +1,37 @@
+context,process_order,process_id,process_title,event_count,hiptx_available_events,hiptx_median_ms,patch_available_events,patch_median_ms
+16-32K,1,runtime_inputs,Runtime FX inputs,3,0,,3,0.104831
+16-32K,2,pre_attention_residual_rmsnorm,Pre-attention residual add and input RMSNorm,3,0,,3,0.599205
+16-32K,3,qkv_projection_and_split,Fused Q/gate/K/V projection and head reshape,3,0,,3,2.445462
+16-32K,4,q_head_rmsnorm,Q head RMSNorm,3,0,,3,0.478104
+16-32K,5,k_head_rmsnorm,K head RMSNorm,3,0,,3,0.276132
+16-32K,6,mrope_table_lookup,MROPE cos/sin table lookup and axis remap,3,0,,3,0.503375
+16-32K,7,q_rope_apply,Q RoPE application,3,0,,3,0.705186
+16-32K,8,k_rope_apply,K RoPE application,3,0,,3,0.319923
+16-32K,9,vllm_attention_and_kv_cache,vLLM attention and KV cache update,3,0,,3,151.937761
+16-32K,10,attention_gate_projection_residual,"Attention gate, output projection, and residual",3,0,,3,1.397292
+16-32K,11,post_attention_rmsnorm,Post-attention RMSNorm,3,0,,3,0.756717
+16-32K,12,mlp_and_layer_output,MLP and layer output tuple,3,0,,3,7.978991
+4-8K,1,runtime_inputs,Runtime FX inputs,3,0,,3,0.04717
+4-8K,2,pre_attention_residual_rmsnorm,Pre-attention residual add and input RMSNorm,3,0,,3,0.384444
+4-8K,3,qkv_projection_and_split,Fused Q/gate/K/V projection and head reshape,3,0,,3,2.338861
+4-8K,4,q_head_rmsnorm,Q head RMSNorm,3,0,,3,0.447354
+4-8K,5,k_head_rmsnorm,K head RMSNorm,3,0,,3,0.272692
+4-8K,6,mrope_table_lookup,MROPE cos/sin table lookup and axis remap,3,0,,3,0.478824
+4-8K,7,q_rope_apply,Q RoPE application,3,0,,3,0.655386
+4-8K,8,k_rope_apply,K RoPE application,3,0,,3,0.319223
+4-8K,9,vllm_attention_and_kv_cache,vLLM attention and KV cache update,3,0,,3,48.881185
+4-8K,10,attention_gate_projection_residual,"Attention gate, output projection, and residual",3,0,,3,1.368412
+4-8K,11,post_attention_rmsnorm,Post-attention RMSNorm,3,0,,3,0.801777
+4-8K,12,mlp_and_layer_output,MLP and layer output tuple,3,0,,3,7.587687
+8-16K,1,runtime_inputs,Runtime FX inputs,3,0,,3,0.054811
+8-16K,2,pre_attention_residual_rmsnorm,Pre-attention residual add and input RMSNorm,3,0,,3,0.359753
+8-16K,3,qkv_projection_and_split,Fused Q/gate/K/V projection and head reshape,3,0,,3,2.326001
+8-16K,4,q_head_rmsnorm,Q head RMSNorm,3,0,,3,0.462354
+8-16K,5,k_head_rmsnorm,K head RMSNorm,3,0,,3,0.283363
+8-16K,6,mrope_table_lookup,MROPE cos/sin table lookup and axis remap,3,0,,3,0.518575
+8-16K,7,q_rope_apply,Q RoPE application,3,0,,3,0.674506
+8-16K,8,k_rope_apply,K RoPE application,3,0,,3,0.322443
+8-16K,9,vllm_attention_and_kv_cache,vLLM attention and KV cache update,3,0,,3,135.89989
+8-16K,10,attention_gate_projection_residual,"Attention gate, output projection, and residual",3,0,,3,1.337142
+8-16K,11,post_attention_rmsnorm,Post-attention RMSNorm,3,0,,3,0.755857
+8-16K,12,mlp_and_layer_output,MLP and layer output tuple,3,0,,3,7.932991

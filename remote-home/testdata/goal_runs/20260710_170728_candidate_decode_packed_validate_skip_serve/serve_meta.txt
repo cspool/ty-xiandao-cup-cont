@@ -1,0 +1,8 @@
+run_id=20260710_170728_candidate_decode_packed_validate_skip_serve
+out=/public/home/tangyu408/testdata/goal_runs/20260710_170728_candidate_decode_packed_validate_skip_serve
+start=2026-07-10T17:07:28+08:00
+pwd=/public/home/tangyu408/testdata
+7a995a16f92a0ef29568c63781a6fb32b924f80157a0bd74a0e9069999acea08  /public/home/tangyu408/vllm_cscc/dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl
+/usr/local/lib/python3.10/dist-packages/vllm/model_executor/layers/fla/ops/fused_recurrent.py:256:def fused_recurrent_gated_delta_rule_packed_decode_kernel(
+/usr/local/lib/python3.10/dist-packages/vllm/model_executor/layers/fla/ops/fused_recurrent.py:338:def fused_recurrent_gated_delta_rule_packed_decode(
+/usr/local/lib/python3.10/dist-packages/vllm/model_executor/models/qwen3_next.py:1072:            validate=False,

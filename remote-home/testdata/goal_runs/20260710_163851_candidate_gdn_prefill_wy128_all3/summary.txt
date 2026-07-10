@@ -1,0 +1,37 @@
+4-8K
+  successful_requests: None
+  failed_requests: None
+  benchmark_duration_s: None
+  total_input_tokens: 19847
+  total_output_tokens: 241
+  request_throughput: 0.11916179779271836
+  output_throughput: 9.572664422681708
+  total_token_throughput: 797.9073980200421
+  mean_ttft_ms: 2718.305400417497
+  mean_tpot_ms: 68.14633235855383
+8-16K
+  successful_requests: None
+  failed_requests: None
+  benchmark_duration_s: None
+  total_input_tokens: 38677
+  total_output_tokens: 610
+  request_throughput: 0.04798462003007154
+  output_throughput: 9.75687273944788
+  total_token_throughput: 628.3905890404736
+  mean_ttft_ms: 6649.7407591280835
+  mean_tpot_ms: 68.82068926570844
+16-32K
+  successful_requests: None
+  failed_requests: None
+  benchmark_duration_s: None
+  total_input_tokens: 64238
+  total_output_tokens: 364
+  request_throughput: 0.04355221781213339
+  output_throughput: 5.284335761205519
+  total_token_throughput: 937.8534583664805
+  mean_ttft_ms: 14249.251243813584
+  mean_tpot_ms: 69.91439187318332
+weighted_output_throughput_avg: 8.204624307778369
+h6_small_weighted_avg: 8.19320628587383
+relative_vs_h6_small_pct: 0.13935962926048262
+target_plus20_weighted: 9.831847543048594

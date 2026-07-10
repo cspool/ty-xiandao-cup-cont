@@ -1,0 +1,316 @@
+diff --git a/setup.py b/setup.py
+index 8de6ef5..184ccac 100644
+--- a/setup.py
++++ b/setup.py
+@@ -843,17 +843,16 @@ def get_version_add(sha: Optional[str] = None) -> str:
+ try:
+     __version__ = "0.18.1"
+     __version_tuple__ = (0, 18, 1)
+-    __hcu_version__ = f'0.18.1+{version}' 
+-    
+-    from vllm.version import __version__, __version_tuple__, __hcu_version__
++    __hcu_version__ = "0.18.1+{version}"
+ except Exception as e:
+     import warnings
+ 
+-    warnings.warn(f"Failed to read commit hash:\\n + str(e)",
++    warnings.warn(f"Failed to read vLLM version:\\n{{e}}",
+                   RuntimeWarning,
+                   stacklevel=2)
+     __version__ = "dev"
+     __version_tuple__ = (0, 0, __version__)
++    __hcu_version__ = __version__
+     
+     
+ def _prev_minor_version_was(version_str):
+@@ -871,7 +870,7 @@ def _prev_minor_version_was(version_str):
+         return True
+ 
+     # Note - this won't do the right thing when we release 1.0!
+-    # assert __version_tuple__[0] == 0
++    assert __version_tuple__[0] == 0
+     assert isinstance(__version_tuple__[1], int)
+     return version_str == f"{{__version_tuple__[0]}}.{{__version_tuple__[1] - 1}}"
+ 
+diff --git a/vllm/model_executor/layers/fla/ops/l2norm.py b/vllm/model_executor/layers/fla/ops/l2norm.py
+index 2eb137a..b092949 100644
+--- a/vllm/model_executor/layers/fla/ops/l2norm.py
++++ b/vllm/model_executor/layers/fla/ops/l2norm.py
+@@ -15,7 +15,7 @@ from vllm.triton_utils import tl, triton
+ 
+ BT_LIST = [8, 16, 32, 64, 128]
+ 
+-USE_DEFAULT_FLA_NORM = int(os.getenv("USE_DEFAULT_FLA_NORM", "0"))
++USE_DEFAULT_FLA_NORM = int(os.getenv("USE_DEFAULT_FLA_NORM", "1"))
+ 
+ 
+ @triton.autotune(
+diff --git a/vllm/model_executor/models/qwen3_next.py b/vllm/model_executor/models/qwen3_next.py
+index bbe30c7..f2df8d8 100644
+--- a/vllm/model_executor/models/qwen3_next.py
++++ b/vllm/model_executor/models/qwen3_next.py
+@@ -200,6 +200,7 @@ class ChunkGatedDeltaRule(CustomOp):
+         self._forward_method = (
+             self.forward_cuda if use_flashinfer else self.forward_native
+         )
++        self.supports_none_initial_state = not use_flashinfer
+ 
+     def forward_cuda(
+         self,
+@@ -208,7 +209,7 @@ class ChunkGatedDeltaRule(CustomOp):
+         v: torch.Tensor,
+         g: torch.Tensor,
+         beta: torch.Tensor,
+-        initial_state: torch.Tensor,
++        initial_state: torch.Tensor | None,
+         output_final_state: bool,
+         cu_seqlens: torch.LongTensor | None = None,
+         use_qk_l2norm_in_kernel: bool = True,
+@@ -232,7 +233,7 @@ class ChunkGatedDeltaRule(CustomOp):
+         v: torch.Tensor,
+         g: torch.Tensor,
+         beta: torch.Tensor,
+-        initial_state: torch.Tensor,
++        initial_state: torch.Tensor | None,
+         output_final_state: bool,
+         cu_seqlens: torch.LongTensor | None = None,
+         use_qk_l2norm_in_kernel: bool = True,
+@@ -750,36 +751,42 @@ class Qwen3NextGatedDeltaNet(nn.Module, MambaBase):
+                 dtype=state_dtype,
+             )
+             cu_seqlens = torch.tensor([0, T], device=device, dtype=torch.long)
+-
+-            try:
+-                self.chunk_gated_delta_rule(
+-                    q=q,
+-                    k=k,
+-                    v=v,
+-                    g=g,
+-                    beta=beta,
+-                    initial_state=state,
+-                    output_final_state=False,
+-                    cu_seqlens=cu_seqlens,
+-                    use_qk_l2norm_in_kernel=True,
+-                )
+-            except Exception:
+-                logger.warning(
+-                    "GDN prefill kernel warmup (T=%d) failed for "
+-                    "layer %s. First inference may OOM due to "
+-                    "autotuner.",
+-                    T,
+-                    self.prefix,
+-                    exc_info=True,
+-                )
+-            else:
+-                logger.debug(
+-                    "GDN prefill kernel warmup (T=%d) completed for layer %s",
+-                    T,
+-                    self.prefix,
+-                )
+-            finally:
+-                del q, k, v, g, beta, state, cu_seqlens
++            warmup_cases = [(state, False)]
++            if self.chunk_gated_delta_rule.supports_none_initial_state:
++                warmup_cases.append((None, True))
++
++            for warmup_state, warmup_output_final_state in warmup_cases:
++                try:
++                    self.chunk_gated_delta_rule(
++                        q=q,
++                        k=k,
++                        v=v,
++                        g=g,
++                        beta=beta,
++                        initial_state=warmup_state,
++                        output_final_state=warmup_output_final_state,
++                        cu_seqlens=cu_seqlens,
++                        use_qk_l2norm_in_kernel=True,
++                    )
++                except Exception:
++                    logger.warning(
++                        "GDN prefill kernel warmup (T=%d, initial_state=%s) "
++                        "failed for layer %s. First inference may OOM due to "
++                        "autotuner.",
++                        T,
++                        "none" if warmup_state is None else "tensor",
++                        self.prefix,
++                        exc_info=True,
++                    )
++                else:
++                    logger.debug(
++                        "GDN prefill kernel warmup (T=%d, initial_state=%s) "
++                        "completed for layer %s",
++                        T,
++                        "none" if warmup_state is None else "tensor",
++                        self.prefix,
++                    )
++            del q, k, v, g, beta, state, cu_seqlens
+ 
+         torch.accelerator.empty_cache()
+ 
+@@ -945,8 +952,22 @@ class Qwen3NextGatedDeltaNet(nn.Module, MambaBase):
+ 
+         # 2.2: Process the remaining part
+         if attn_metadata.num_prefills > 0:
+-            initial_state = ssm_state[non_spec_state_indices_tensor].contiguous()
+-            initial_state[~has_initial_state, ...] = 0
++            if (
++                attn_metadata.has_initial_state_any is False
++                and self.chunk_gated_delta_rule.supports_none_initial_state
++            ):
++                initial_state = None
++            elif attn_metadata.has_initial_state_any is False:
++                initial_state = ssm_state.new_zeros(
++                    (
++                        non_spec_state_indices_tensor.shape[0],
++                        *ssm_state.shape[1:],
++                    )
++                )
++            else:
++                initial_state = ssm_state[non_spec_state_indices_tensor].contiguous()
++                if attn_metadata.has_initial_state_all is not True:
++                    initial_state[~has_initial_state, ...] = 0
+             (
+                 core_attn_out_non_spec,
+                 last_recurrent_state,
+diff --git a/vllm/platforms/rocm.py b/vllm/platforms/rocm.py
+index b5fa071..a7532e8 100644
+--- a/vllm/platforms/rocm.py
++++ b/vllm/platforms/rocm.py
+@@ -310,6 +310,8 @@ def _get_backend_priorities(
+     use_mla: bool,
+     use_sparse: bool,
+ ) -> list[AttentionBackendEnum]:
++    from importlib.util import find_spec
++
+     from vllm._aiter_ops import rocm_aiter_ops
+ 
+     if use_sparse:
+@@ -347,6 +349,9 @@ def _get_backend_priorities(
+     ):
+         backends.append(AttentionBackendEnum.ROCM_ATTN)
+ 
++    if find_spec("aiter.ops.triton.unified_attention") is not None:
++        backends.append(AttentionBackendEnum.ROCM_AITER_UNIFIED_ATTN)
++
+     # Default: Triton Unified Attention
+     backends.append(AttentionBackendEnum.TRITON_ATTN)
+     return backends
+diff --git a/vllm/v1/attention/backends/gdn_attn.py b/vllm/v1/attention/backends/gdn_attn.py
+index 574cc87..4bcad51 100644
+--- a/vllm/v1/attention/backends/gdn_attn.py
++++ b/vllm/v1/attention/backends/gdn_attn.py
+@@ -43,6 +43,8 @@ class GDNAttentionMetadata:
+     num_actual_tokens: int
+ 
+     has_initial_state: torch.Tensor | None = None
++    has_initial_state_any: bool | None = None
++    has_initial_state_all: bool | None = None
+ 
+     spec_query_start_loc: torch.Tensor | None = None  # shape: [num_spec_decodes + 1,]
+     non_spec_query_start_loc: torch.Tensor | None = (
+@@ -301,11 +303,21 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
+             assert num_accepted_tokens is not None
+             num_accepted_tokens = num_accepted_tokens[spec_sequence_masks]
+ 
++        has_initial_state_any = None
++        has_initial_state_all = None
+         if num_prefills > 0:
+             has_initial_state = context_lens_tensor > 0
++            context_lens_cpu = m._num_computed_tokens_cpu
+             if spec_sequence_masks is not None:
+                 has_initial_state = has_initial_state[~spec_sequence_masks]
++                if context_lens_cpu is not None:
++                    assert spec_sequence_masks_cpu is not None
++                    context_lens_cpu = context_lens_cpu[~spec_sequence_masks_cpu]
+                 assert non_spec_query_start_loc_cpu is not None
++            if context_lens_cpu is not None:
++                has_initial_state_cpu = context_lens_cpu > 0
++                has_initial_state_any = has_initial_state_cpu.any().item()
++                has_initial_state_all = has_initial_state_cpu.all().item()
+             nums_dict, batch_ptr, token_chunk_offset_ptr = (
+                 compute_causal_conv1d_metadata(
+                     non_spec_query_start_loc_cpu,
+@@ -401,6 +413,8 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
+             num_spec_decode_tokens=num_spec_decode_tokens,
+             num_actual_tokens=m.num_actual_tokens,
+             has_initial_state=has_initial_state,
++            has_initial_state_any=has_initial_state_any,
++            has_initial_state_all=has_initial_state_all,
+             spec_query_start_loc=spec_query_start_loc,
+             non_spec_query_start_loc=non_spec_query_start_loc,
+             spec_state_indices_tensor=spec_state_indices_tensor,
+diff --git a/vllm/v1/attention/backends/rocm_aiter_unified_attn.py b/vllm/v1/attention/backends/rocm_aiter_unified_attn.py
+index bba7e7b..64ba34d 100644
+--- a/vllm/v1/attention/backends/rocm_aiter_unified_attn.py
++++ b/vllm/v1/attention/backends/rocm_aiter_unified_attn.py
+@@ -45,7 +45,7 @@ class RocmAiterUnifiedAttentionBackend(RocmAttentionBackend):
+ 
+     @classmethod
+     def supports_sink(cls) -> bool:
+-        return True
++        return False
+ 
+     forward_includes_kv_cache_update: bool = False
+ 
+@@ -226,8 +226,6 @@ class RocmAiterUnifiedAttentionImpl(RocmAttentionImpl):
+             q_descale=None,  # Not supported
+             k_descale=layer._k_scale.expand(descale_shape),
+             v_descale=layer._v_scale.expand(descale_shape),
+-            sinks=self.sinks,
+-            output_scale=output_scale,
+         )
+ 
+         return output
+diff --git a/vllm/version.py b/vllm/version.py
+index 63095f8..29026cd 100644
+--- a/vllm/version.py
++++ b/vllm/version.py
+@@ -1,19 +1,21 @@
+-# SPDX-License-Identifier: Apache-2.0
+-# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+ 
+ try:
+-    from ._version import __version__, __version_tuple__
++    __version__ = "0.18.1"
++    __version_tuple__ = (0, 18, 1)
++    __hcu_version__ = "0.18.1+das.dtk2604"
+ except Exception as e:
+     import warnings
+ 
+-    warnings.warn(f"Failed to read commit hash:\n{e}", RuntimeWarning, stacklevel=2)
+-
++    warnings.warn(f"Failed to read vLLM version:\n{e}",
++                  RuntimeWarning,
++                  stacklevel=2)
+     __version__ = "dev"
+     __version_tuple__ = (0, 0, __version__)
+-
+-
++    __hcu_version__ = __version__
++    
++    
+ def _prev_minor_version_was(version_str):
+-    """Check whether a given version matches the previous minor version.
++    '''Check whether a given version matches the previous minor version.
+ 
+     Return True if version_str matches the previous minor version.
+ 
+@@ -21,7 +23,7 @@ def _prev_minor_version_was(version_str):
+     supplied version_str is '0.6'.
+ 
+     Used for --show-hidden-metrics-for-version.
+-    """
++    '''
+     # Match anything if this is a dev tree
+     if __version_tuple__[0:2] == (0, 0):
+         return True
+@@ -33,7 +35,7 @@ def _prev_minor_version_was(version_str):
+ 
+ 
+ def _prev_minor_version():
+-    """For the purpose of testing, return a previous minor version number."""
++    '''For the purpose of testing, return a previous minor version number.'''
+     # In dev tree, this will return "0.-1", but that will work fine"
+     assert isinstance(__version_tuple__[1], int)
+     return f"{__version_tuple__[0]}.{__version_tuple__[1] - 1}"

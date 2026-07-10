@@ -1,0 +1,2 @@
+0.18.1
+/usr/local/lib/python3.10/dist-packages/vllm/__init__.py

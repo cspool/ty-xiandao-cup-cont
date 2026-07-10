@@ -1,0 +1,15 @@
+# D2 candidate_decode_aiter_2d all3 summary
+
+| Context | output_throughput_tok_s | completed | failed | total_output_tokens | vs_h6_1c_small_best | vs_d1 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4-8K | 8.537998078221 | 3 | 0 | 241 | -10.684701% | -10.704015% |
+| 8-16K | 8.079257697223 | 3 | 0 | 612 | -17.097515% | -17.138445% |
+| 16-32K | 4.393316478645 | 3 | 0 | 378 | -16.710169% | -16.778653% |
+
+weighted_output_throughput=7.065223407849
+weighted_h6_1c_small_best=8.367045652239
+weighted_d1=8.371168300000
+relative_vs_h6_1c_small_best=-15.558924%
+relative_vs_d1=-15.600509%
+decode_goal_plus10_target=9.203750217463
+meets_plus10_target=False

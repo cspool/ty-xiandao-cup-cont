@@ -1,0 +1,4 @@
+rocm_file /usr/local/lib/python3.10/dist-packages/vllm/platforms/rocm.py
+rocm_forces_flash False
+flash_file /usr/local/lib/python3.10/dist-packages/vllm/v1/attention/backends/flash_attn.py
+flash_uses_metadata_cu_k False

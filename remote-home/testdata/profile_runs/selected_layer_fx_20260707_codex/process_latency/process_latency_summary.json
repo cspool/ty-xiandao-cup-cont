@@ -1,0 +1,602 @@
+{
+  "run_dir": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex",
+  "latency_dir": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/process_latency",
+  "process_count": 12,
+  "event_count": 9,
+  "patch_range_count": 108,
+  "hiptx_range_count": 0,
+  "processes": [
+    {
+      "order": 1,
+      "process_id": "runtime_inputs",
+      "title": "Runtime FX inputs",
+      "node_ranges": [
+        "0-2"
+      ],
+      "node_count": 3
+    },
+    {
+      "order": 2,
+      "process_id": "pre_attention_residual_rmsnorm",
+      "title": "Pre-attention residual add and input RMSNorm",
+      "node_ranges": [
+        "3-15"
+      ],
+      "node_count": 13
+    },
+    {
+      "order": 3,
+      "process_id": "qkv_projection_and_split",
+      "title": "Fused Q/gate/K/V projection and head reshape",
+      "node_ranges": [
+        "17-31"
+      ],
+      "node_count": 15
+    },
+    {
+      "order": 4,
+      "process_id": "q_head_rmsnorm",
+      "title": "Q head RMSNorm",
+      "node_ranges": [
+        "32-45"
+      ],
+      "node_count": 14
+    },
+    {
+      "order": 5,
+      "process_id": "k_head_rmsnorm",
+      "title": "K head RMSNorm",
+      "node_ranges": [
+        "46-59"
+      ],
+      "node_count": 14
+    },
+    {
+      "order": 6,
+      "process_id": "mrope_table_lookup",
+      "title": "MROPE cos/sin table lookup and axis remap",
+      "node_ranges": [
+        "60-84"
+      ],
+      "node_count": 25
+    },
+    {
+      "order": 7,
+      "process_id": "q_rope_apply",
+      "title": "Q RoPE application",
+      "node_ranges": [
+        "85-101"
+      ],
+      "node_count": 17
+    },
+    {
+      "order": 8,
+      "process_id": "k_rope_apply",
+      "title": "K RoPE application",
+      "node_ranges": [
+        "102-118"
+      ],
+      "node_count": 17
+    },
+    {
+      "order": 9,
+      "process_id": "vllm_attention_and_kv_cache",
+      "title": "vLLM attention and KV cache update",
+      "node_ranges": [
+        "119-125"
+      ],
+      "node_count": 7
+    },
+    {
+      "order": 10,
+      "process_id": "attention_gate_projection_residual",
+      "title": "Attention gate, output projection, and residual",
+      "node_ranges": [
+        "16",
+        "126-132",
+        "135"
+      ],
+      "node_count": 9
+    },
+    {
+      "order": 11,
+      "process_id": "post_attention_rmsnorm",
+      "title": "Post-attention RMSNorm",
+      "node_ranges": [
+        "133-134",
+        "136-145"
+      ],
+      "node_count": 12
+    },
+    {
+      "order": 12,
+      "process_id": "mlp_and_layer_output",
+      "title": "MLP and layer output tuple",
+      "node_ranges": [
+        "146-154"
+      ],
+      "node_count": 9
+    }
+  ],
+  "events": [
+    {
+      "context": "16-32K",
+      "event_id": "input1_layer3",
+      "layer_id": null,
+      "forward_id": 1,
+      "q_len": 4096,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/16-32K/fx_trace/traces/input1_layer3/fx_trace_metadata.json"
+    },
+    {
+      "context": "16-32K",
+      "event_id": "input2_layer31",
+      "layer_id": null,
+      "forward_id": 2,
+      "q_len": 4096,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/16-32K/fx_trace/traces/input2_layer31/fx_trace_metadata.json"
+    },
+    {
+      "context": "16-32K",
+      "event_id": "input4_layer59",
+      "layer_id": null,
+      "forward_id": 4,
+      "q_len": 4096,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/16-32K/fx_trace/traces/input4_layer59/fx_trace_metadata.json"
+    },
+    {
+      "context": "4-8K",
+      "event_id": "input1_layer3",
+      "layer_id": null,
+      "forward_id": 1,
+      "q_len": 4096,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/4-8K/fx_trace/traces/input1_layer3/fx_trace_metadata.json"
+    },
+    {
+      "context": "4-8K",
+      "event_id": "input1_layer31",
+      "layer_id": null,
+      "forward_id": 1,
+      "q_len": 4096,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/4-8K/fx_trace/traces/input1_layer31/fx_trace_metadata.json"
+    },
+    {
+      "context": "4-8K",
+      "event_id": "input1_layer59",
+      "layer_id": null,
+      "forward_id": 1,
+      "q_len": 4096,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/4-8K/fx_trace/traces/input1_layer59/fx_trace_metadata.json"
+    },
+    {
+      "context": "8-16K",
+      "event_id": "input1_layer3",
+      "layer_id": null,
+      "forward_id": 1,
+      "q_len": 4096,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/8-16K/fx_trace/traces/input1_layer3/fx_trace_metadata.json"
+    },
+    {
+      "context": "8-16K",
+      "event_id": "input3_layer59",
+      "layer_id": null,
+      "forward_id": 3,
+      "q_len": 4096,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/8-16K/fx_trace/traces/input3_layer59/fx_trace_metadata.json"
+    },
+    {
+      "context": "8-16K",
+      "event_id": "input4_layer31",
+      "layer_id": null,
+      "forward_id": 4,
+      "q_len": 1685,
+      "phase": "prefill_chunk",
+      "metadata_path": "/data3/Projects/scnet_ssh/remote-home/testdata/profile_runs/selected_layer_fx_20260707_codex/contexts/8-16K/fx_trace/traces/input4_layer31/fx_trace_metadata.json"
+    }
+  ],
+  "context_summary": [
+    {
+      "context": "16-32K",
+      "process_order": 1,
+      "process_id": "runtime_inputs",
+      "process_title": "Runtime FX inputs",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.104831
+    },
+    {
+      "context": "16-32K",
+      "process_order": 2,
+      "process_id": "pre_attention_residual_rmsnorm",
+      "process_title": "Pre-attention residual add and input RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.599205
+    },
+    {
+      "context": "16-32K",
+      "process_order": 3,
+      "process_id": "qkv_projection_and_split",
+      "process_title": "Fused Q/gate/K/V projection and head reshape",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 2.445462
+    },
+    {
+      "context": "16-32K",
+      "process_order": 4,
+      "process_id": "q_head_rmsnorm",
+      "process_title": "Q head RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.478104
+    },
+    {
+      "context": "16-32K",
+      "process_order": 5,
+      "process_id": "k_head_rmsnorm",
+      "process_title": "K head RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.276132
+    },
+    {
+      "context": "16-32K",
+      "process_order": 6,
+      "process_id": "mrope_table_lookup",
+      "process_title": "MROPE cos/sin table lookup and axis remap",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.503375
+    },
+    {
+      "context": "16-32K",
+      "process_order": 7,
+      "process_id": "q_rope_apply",
+      "process_title": "Q RoPE application",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.705186
+    },
+    {
+      "context": "16-32K",
+      "process_order": 8,
+      "process_id": "k_rope_apply",
+      "process_title": "K RoPE application",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.319923
+    },
+    {
+      "context": "16-32K",
+      "process_order": 9,
+      "process_id": "vllm_attention_and_kv_cache",
+      "process_title": "vLLM attention and KV cache update",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 151.937761
+    },
+    {
+      "context": "16-32K",
+      "process_order": 10,
+      "process_id": "attention_gate_projection_residual",
+      "process_title": "Attention gate, output projection, and residual",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 1.397292
+    },
+    {
+      "context": "16-32K",
+      "process_order": 11,
+      "process_id": "post_attention_rmsnorm",
+      "process_title": "Post-attention RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.756717
+    },
+    {
+      "context": "16-32K",
+      "process_order": 12,
+      "process_id": "mlp_and_layer_output",
+      "process_title": "MLP and layer output tuple",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 7.978991
+    },
+    {
+      "context": "4-8K",
+      "process_order": 1,
+      "process_id": "runtime_inputs",
+      "process_title": "Runtime FX inputs",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.04717
+    },
+    {
+      "context": "4-8K",
+      "process_order": 2,
+      "process_id": "pre_attention_residual_rmsnorm",
+      "process_title": "Pre-attention residual add and input RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.384444
+    },
+    {
+      "context": "4-8K",
+      "process_order": 3,
+      "process_id": "qkv_projection_and_split",
+      "process_title": "Fused Q/gate/K/V projection and head reshape",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 2.338861
+    },
+    {
+      "context": "4-8K",
+      "process_order": 4,
+      "process_id": "q_head_rmsnorm",
+      "process_title": "Q head RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.447354
+    },
+    {
+      "context": "4-8K",
+      "process_order": 5,
+      "process_id": "k_head_rmsnorm",
+      "process_title": "K head RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.272692
+    },
+    {
+      "context": "4-8K",
+      "process_order": 6,
+      "process_id": "mrope_table_lookup",
+      "process_title": "MROPE cos/sin table lookup and axis remap",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.478824
+    },
+    {
+      "context": "4-8K",
+      "process_order": 7,
+      "process_id": "q_rope_apply",
+      "process_title": "Q RoPE application",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.655386
+    },
+    {
+      "context": "4-8K",
+      "process_order": 8,
+      "process_id": "k_rope_apply",
+      "process_title": "K RoPE application",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.319223
+    },
+    {
+      "context": "4-8K",
+      "process_order": 9,
+      "process_id": "vllm_attention_and_kv_cache",
+      "process_title": "vLLM attention and KV cache update",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 48.881185
+    },
+    {
+      "context": "4-8K",
+      "process_order": 10,
+      "process_id": "attention_gate_projection_residual",
+      "process_title": "Attention gate, output projection, and residual",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 1.368412
+    },
+    {
+      "context": "4-8K",
+      "process_order": 11,
+      "process_id": "post_attention_rmsnorm",
+      "process_title": "Post-attention RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.801777
+    },
+    {
+      "context": "4-8K",
+      "process_order": 12,
+      "process_id": "mlp_and_layer_output",
+      "process_title": "MLP and layer output tuple",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 7.587687
+    },
+    {
+      "context": "8-16K",
+      "process_order": 1,
+      "process_id": "runtime_inputs",
+      "process_title": "Runtime FX inputs",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.054811
+    },
+    {
+      "context": "8-16K",
+      "process_order": 2,
+      "process_id": "pre_attention_residual_rmsnorm",
+      "process_title": "Pre-attention residual add and input RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.359753
+    },
+    {
+      "context": "8-16K",
+      "process_order": 3,
+      "process_id": "qkv_projection_and_split",
+      "process_title": "Fused Q/gate/K/V projection and head reshape",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 2.326001
+    },
+    {
+      "context": "8-16K",
+      "process_order": 4,
+      "process_id": "q_head_rmsnorm",
+      "process_title": "Q head RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.462354
+    },
+    {
+      "context": "8-16K",
+      "process_order": 5,
+      "process_id": "k_head_rmsnorm",
+      "process_title": "K head RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.283363
+    },
+    {
+      "context": "8-16K",
+      "process_order": 6,
+      "process_id": "mrope_table_lookup",
+      "process_title": "MROPE cos/sin table lookup and axis remap",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.518575
+    },
+    {
+      "context": "8-16K",
+      "process_order": 7,
+      "process_id": "q_rope_apply",
+      "process_title": "Q RoPE application",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.674506
+    },
+    {
+      "context": "8-16K",
+      "process_order": 8,
+      "process_id": "k_rope_apply",
+      "process_title": "K RoPE application",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.322443
+    },
+    {
+      "context": "8-16K",
+      "process_order": 9,
+      "process_id": "vllm_attention_and_kv_cache",
+      "process_title": "vLLM attention and KV cache update",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 135.89989
+    },
+    {
+      "context": "8-16K",
+      "process_order": 10,
+      "process_id": "attention_gate_projection_residual",
+      "process_title": "Attention gate, output projection, and residual",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 1.337142
+    },
+    {
+      "context": "8-16K",
+      "process_order": 11,
+      "process_id": "post_attention_rmsnorm",
+      "process_title": "Post-attention RMSNorm",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 0.755857
+    },
+    {
+      "context": "8-16K",
+      "process_order": 12,
+      "process_id": "mlp_and_layer_output",
+      "process_title": "MLP and layer output tuple",
+      "event_count": 3,
+      "hiptx_available_events": 0,
+      "hiptx_median_ms": null,
+      "patch_available_events": 3,
+      "patch_median_ms": 7.932991
+    }
+  ]
+}

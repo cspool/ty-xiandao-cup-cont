@@ -1,0 +1,15 @@
+run_id=20260710_163851_candidate_gdn_prefill_wy128_all3
+out=/public/home/tangyu408/testdata/goal_runs/20260710_163851_candidate_gdn_prefill_wy128_all3
+start=2026-07-10T16:38:51+08:00
+pwd=/public/home/tangyu408/testdata
+18:USE_DEFAULT_FLA_NORM = int(os.getenv("USE_DEFAULT_FLA_NORM", "0"))
+114:    if not USE_DEFAULT_FLA_NORM:
+135:    BK = 128
+136:    BV = 128
+c31633e1cc7ee6356e0052c4bc2e2d28fb3770092a96d730ca8f8e556288213f  /public/home/tangyu408/vllm_cscc/dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl
+script_status=0
+script_end=2026-07-10T16:44:31+08:00
+script_elapsed_sec=339
+sleep_to_10min_sec=261
+after_wait=2026-07-10T16:48:52+08:00
+total_elapsed_sec=600

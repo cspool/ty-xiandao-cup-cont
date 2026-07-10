@@ -1,0 +1,5 @@
+WARNING 07-09 22:08:15 [rocm.py:42] Failed to import from vllm._C with ModuleNotFoundError("No module named 'vllm._C'")
+WARNING 07-09 22:08:19 [interface.py:229] Failed to import from vllm._C: ModuleNotFoundError("No module named 'vllm._C'")
+/public/home/tangyu408/vllm_cscc/vllm/v1/attention/backends/flash_attn.py
+has_cu_seqlens_k_metadata True
+forward_uses_metadata_cu_k True

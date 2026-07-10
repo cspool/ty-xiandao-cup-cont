@@ -1,0 +1,242 @@
+run_id=20260710_170553_candidate_decode_packed_validate_skip_build
+out=/public/home/tangyu408/testdata/goal_runs/20260710_170553_candidate_decode_packed_validate_skip_build
+start=2026-07-10T17:05:53+08:00
+pwd=/public/home/tangyu408/vllm_cscc
+Python 3.10.12
+ M setup.py
+ M vllm/model_executor/layers/fla/ops/fused_recurrent.py
+ M vllm/model_executor/models/qwen3_next.py
+ M vllm/platforms/rocm.py
+ M vllm/v1/attention/backends/gdn_attn.py
+ M vllm/v1/attention/backends/rocm_aiter_unified_attn.py
+ M vllm/version.py
+vllm/model_executor/layers/fla/ops/fused_recurrent.py:256:def fused_recurrent_gated_delta_rule_packed_decode_kernel(
+vllm/model_executor/layers/fla/ops/fused_recurrent.py:338:def fused_recurrent_gated_delta_rule_packed_decode(
+vllm/model_executor/models/qwen3_next.py:1072:            validate=False,
+diff --git a/vllm/model_executor/layers/fla/ops/fused_recurrent.py b/vllm/model_executor/layers/fla/ops/fused_recurrent.py
+index f7b562f..73a7088 100644
+--- a/vllm/model_executor/layers/fla/ops/fused_recurrent.py
++++ b/vllm/model_executor/layers/fla/ops/fused_recurrent.py
+@@ -346,90 +346,92 @@ def fused_recurrent_gated_delta_rule_packed_decode(
+     out: torch.Tensor,
+     ssm_state_indices: torch.Tensor,
+     use_qk_l2norm_in_kernel: bool = False,
++    validate: bool = True,
+ ) -> tuple[torch.Tensor, torch.Tensor]:
+-    if mixed_qkv.ndim != 2:
+-        raise ValueError(
+-            f"`mixed_qkv` must be a 2D tensor (got ndim={mixed_qkv.ndim})."
+-        )
+-    if mixed_qkv.stride(-1) != 1:
+-        raise ValueError("`mixed_qkv` must be contiguous in the last dim.")
+-    if a.ndim != 2 or b.ndim != 2:
+-        raise ValueError(
+-            f"`a` and `b` must be 2D tensors (got a.ndim={a.ndim}, b.ndim={b.ndim})."
+-        )
+-    if a.stride(-1) != 1 or b.stride(-1) != 1:
+-        raise ValueError("`a`/`b` must be contiguous in the last dim.")
+-    if A_log.ndim != 1 or dt_bias.ndim != 1:
+-        raise ValueError("`A_log`/`dt_bias` must be 1D tensors.")
+-    if A_log.stride(0) != 1 or dt_bias.stride(0) != 1:
+-        raise ValueError("`A_log`/`dt_bias` must be contiguous.")
+-    if ssm_state_indices.ndim != 1:
+-        raise ValueError(
+-            f"`ssm_state_indices` must be 1D for packed decode (got ndim={ssm_state_indices.ndim})."
+-        )
+-    if not out.is_contiguous():
+-        raise ValueError("`out` must be contiguous.")
+-
+-    dev = mixed_qkv.device
+-    if (
+-        a.device != dev
+-        or b.device != dev
+-        or A_log.device != dev
+-        or dt_bias.device != dev
+-        or initial_state.device != dev
+-        or out.device != dev
+-        or ssm_state_indices.device != dev
+-    ):
+-        raise ValueError("All inputs must be on the same device.")
++    if validate:
++        if mixed_qkv.ndim != 2:
++            raise ValueError(
++                f"`mixed_qkv` must be a 2D tensor (got ndim={mixed_qkv.ndim})."
++            )
++        if mixed_qkv.stride(-1) != 1:
++            raise ValueError("`mixed_qkv` must be contiguous in the last dim.")
++        if a.ndim != 2 or b.ndim != 2:
++            raise ValueError(
++                f"`a` and `b` must be 2D tensors (got a.ndim={a.ndim}, b.ndim={b.ndim})."
++            )
++        if a.stride(-1) != 1 or b.stride(-1) != 1:
++            raise ValueError("`a`/`b` must be contiguous in the last dim.")
++        if A_log.ndim != 1 or dt_bias.ndim != 1:
++            raise ValueError("`A_log`/`dt_bias` must be 1D tensors.")
++        if A_log.stride(0) != 1 or dt_bias.stride(0) != 1:
++            raise ValueError("`A_log`/`dt_bias` must be contiguous.")
++        if ssm_state_indices.ndim != 1:
++            raise ValueError(
++                f"`ssm_state_indices` must be 1D for packed decode (got ndim={ssm_state_indices.ndim})."
++            )
++        if not out.is_contiguous():
++            raise ValueError("`out` must be contiguous.")
++
++        dev = mixed_qkv.device
++        if (
++            a.device != dev
++            or b.device != dev
++            or A_log.device != dev
++            or dt_bias.device != dev
++            or initial_state.device != dev
++            or out.device != dev
++            or ssm_state_indices.device != dev
++        ):
++            raise ValueError("All inputs must be on the same device.")
+ 
+     B = mixed_qkv.shape[0]
+-    if a.shape[0] != B or b.shape[0] != B:
++    if validate and (a.shape[0] != B or b.shape[0] != B):
+         raise ValueError(
+             "Mismatched batch sizes: "
+             f"mixed_qkv.shape[0]={B}, a.shape[0]={a.shape[0]}, b.shape[0]={b.shape[0]}."
+         )
+-    if ssm_state_indices.shape[0] != B:
++    if validate and ssm_state_indices.shape[0] != B:
+         raise ValueError(
+             f"`ssm_state_indices` must have shape [B] (got {tuple(ssm_state_indices.shape)}; expected ({B},))."
+         )
+ 
+-    if initial_state.ndim != 4:
++    if validate and initial_state.ndim != 4:
+         raise ValueError(
+             f"`initial_state` must be a 4D tensor (got ndim={initial_state.ndim})."
+         )
+-    if initial_state.stride(-1) != 1:
++    if validate and initial_state.stride(-1) != 1:
+         raise ValueError("`initial_state` must be contiguous in the last dim.")
+     HV, V, K = initial_state.shape[-3:]
+-    if a.shape[1] != HV or b.shape[1] != HV:
++    if validate and (a.shape[1] != HV or b.shape[1] != HV):
+         raise ValueError(
+             f"`a`/`b` must have shape [B, HV] with HV={HV} (got a.shape={tuple(a.shape)}, b.shape={tuple(b.shape)})."
+         )
+-    if A_log.numel() != HV or dt_bias.numel() != HV:
++    if validate and (A_log.numel() != HV or dt_bias.numel() != HV):
+         raise ValueError(
+             f"`A_log` and `dt_bias` must have {HV} elements (got A_log.numel()={A_log.numel()}, dt_bias.numel()={dt_bias.numel()})."
+         )
+-    if out.shape != (B, 1, HV, V):
++    if validate and out.shape != (B, 1, HV, V):
+         raise ValueError(
+             f"`out` must have shape {(B, 1, HV, V)} (got out.shape={tuple(out.shape)})."
+         )
+ 
+     qkv_dim = mixed_qkv.shape[1]
+     qk_dim = qkv_dim - HV * V
+-    if qk_dim <= 0 or qk_dim % 2 != 0:
++    if validate and (qk_dim <= 0 or qk_dim % 2 != 0):
+         raise ValueError(
+             f"Invalid packed `mixed_qkv` last dim={qkv_dim} for HV={HV}, V={V}."
+         )
+     q_dim = qk_dim // 2
+-    if q_dim % K != 0:
++    if validate and q_dim % K != 0:
+         raise ValueError(f"Invalid packed Q size {q_dim}: must be divisible by K={K}.")
+     H = q_dim // K
+-    if H <= 0 or HV % H != 0:
++    if validate and (H <= 0 or HV % H != 0):
+         raise ValueError(
+             f"Invalid head config inferred from mixed_qkv: H={H}, HV={HV}."
+         )
+ 
+     BK = triton.next_power_of_2(K)
+-    if triton.cdiv(K, BK) != 1:
++    if validate and triton.cdiv(K, BK) != 1:
+         raise ValueError(
+             f"Packed decode kernel only supports NK=1 (got K={K}, BK={BK})."
+         )
+diff --git a/vllm/model_executor/models/qwen3_next.py b/vllm/model_executor/models/qwen3_next.py
+index bbe30c7..7357b4f 100644
+--- a/vllm/model_executor/models/qwen3_next.py
++++ b/vllm/model_executor/models/qwen3_next.py
+@@ -200,6 +200,7 @@ class ChunkGatedDeltaRule(CustomOp):
+         self._forward_method = (
+             self.forward_cuda if use_flashinfer else self.forward_native
+         )
++        self.supports_none_initial_state = not use_flashinfer
+ 
+     def forward_cuda(
+         self,
+@@ -208,7 +209,7 @@ class ChunkGatedDeltaRule(CustomOp):
+         v: torch.Tensor,
+         g: torch.Tensor,
+         beta: torch.Tensor,
+-        initial_state: torch.Tensor,
++        initial_state: torch.Tensor | None,
+         output_final_state: bool,
+         cu_seqlens: torch.LongTensor | None = None,
+         use_qk_l2norm_in_kernel: bool = True,
+@@ -232,7 +233,7 @@ class ChunkGatedDeltaRule(CustomOp):
+         v: torch.Tensor,
+         g: torch.Tensor,
+         beta: torch.Tensor,
+-        initial_state: torch.Tensor,
++        initial_state: torch.Tensor | None,
+         output_final_state: bool,
+         cu_seqlens: torch.LongTensor | None = None,
+         use_qk_l2norm_in_kernel: bool = True,
+@@ -750,36 +751,42 @@ class Qwen3NextGatedDeltaNet(nn.Module, MambaBase):
+                 dtype=state_dtype,
+             )
+             cu_seqlens = torch.tensor([0, T], device=device, dtype=torch.long)
+-
+-            try:
+-                self.chunk_gated_delta_rule(
+-                    q=q,
+-                    k=k,
+-                    v=v,
+-                    g=g,
+-                    beta=beta,
+-                    initial_state=state,
+-                    output_final_state=False,
+-                    cu_seqlens=cu_seqlens,
+-                    use_qk_l2norm_in_kernel=True,
+-                )
+-            except Exception:
+-                logger.warning(
+-                    "GDN prefill kernel warmup (T=%d) failed for "
+-                    "layer %s. First inference may OOM due to "
+-                    "autotuner.",
+-                    T,
+-                    self.prefix,
+-                    exc_info=True,
+-                )
+-            else:
+-                logger.debug(
+-                    "GDN prefill kernel warmup (T=%d) completed for layer %s",
+-                    T,
+-                    self.prefix,
+-                )
+-            finally:
+-                del q, k, v, g, beta, state, cu_seqlens
++            warmup_cases = [(state, False)]
++            if self.chunk_gated_delta_rule.supports_none_initial_state:
++                warmup_cases.append((None, True))
++
++            for warmup_state, warmup_output_final_state in warmup_cases:
++                try:
++                    self.chunk_gated_delta_rule(
++                        q=q,
++                        k=k,
++                        v=v,
++                        g=g,
++                        beta=beta,
++                        initial_state=warmup_state,
++                        output_final_state=warmup_output_final_state,
+-rw-r--r-- 1 root root 50784156 Jul 10 16:55 dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl
+end=2026-07-10T17:06:55+08:00
+-rw-r--r-- 1 root root 50784201 Jul 10 17:06 dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl
+7a995a16f92a0ef29568c63781a6fb32b924f80157a0bd74a0e9069999acea08  dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl
+/usr/local/lib/python3.10/dist-packages/vllm/model_executor/layers/fla/ops/fused_recurrent.py:256:def fused_recurrent_gated_delta_rule_packed_decode_kernel(
+/usr/local/lib/python3.10/dist-packages/vllm/model_executor/layers/fla/ops/fused_recurrent.py:338:def fused_recurrent_gated_delta_rule_packed_decode(
+/usr/local/lib/python3.10/dist-packages/vllm/model_executor/models/qwen3_next.py:1072:            validate=False,

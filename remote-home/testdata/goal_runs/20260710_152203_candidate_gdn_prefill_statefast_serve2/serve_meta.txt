@@ -1,0 +1,20 @@
+run_id=20260710_152203_candidate_gdn_prefill_statefast_serve2
+out=/public/home/tangyu408/testdata/goal_runs/20260710_152203_candidate_gdn_prefill_statefast_serve2
+start=2026-07-10T15:22:03+08:00
+7c3e8c5ecdf02109e02af8c3b5ba05050b26339c7f50869b5288eea359364fad  ./start_vllm.sh
+Name: vllm
+Version: 0.18.1+das.dtk2604
+Summary: A high-throughput and memory-efficient inference and serving engine for LLMs
+Home-page: https://github.com/vllm-project/vllm
+Author: vLLM Team
+Author-email: 
+License-Expression: Apache-2.0
+Location: /usr/local/lib/python3.10/dist-packages
+Requires: aiohttp, amd-quark, anthropic, blake3, cachetools, cbor2, cloudpickle, compressed-tensors, datasets, depyf, diskcache, einops, fastapi, filelock, flash_attn, gguf, grpcio, grpcio-reflection, ijson, lark, llguidance, lm-format-enforcer, mcp, mistral_common, model-hosting-container-standards, msgspec, ninja, numba, numpy, openai, openai-harmony, opencv-python-headless, opentelemetry-api, opentelemetry-exporter-otlp, opentelemetry-sdk, opentelemetry-semantic-conventions-ai, outlines_core, packaging, partial-json-parser, peft, pillow, prometheus-fastapi-instrumentator, prometheus_client, protobuf, psutil, py-cpuinfo, pybase64, pydantic, pytest-asyncio, python-json-logger, pyyaml, pyzmq, regex, requests, runai-model-streamer, sentencepiece, setproctitle, setuptools, setuptools-scm, tensorizer, tiktoken, timm, tokenizers, torch, torchvision, tqdm, transformers, typing_extensions, watchfiles, xgrammar
+Required-by: 
+/usr/local/lib/python3.10/dist-packages/vllm/v1/attention/backends/gdn_attn.py:46:    has_initial_state_any: bool | None = None
+/usr/local/lib/python3.10/dist-packages/vllm/v1/attention/backends/gdn_attn.py:306:        has_initial_state_any = None
+/usr/local/lib/python3.10/dist-packages/vllm/v1/attention/backends/gdn_attn.py:319:                has_initial_state_any = has_initial_state_cpu.any().item()
+/usr/local/lib/python3.10/dist-packages/vllm/v1/attention/backends/gdn_attn.py:416:            has_initial_state_any=has_initial_state_any,
+/usr/local/lib/python3.10/dist-packages/vllm/model_executor/models/qwen3_next.py:948:            if attn_metadata.has_initial_state_any is False:
+/usr/local/lib/python3.10/dist-packages/vllm/model_executor/models/qwen3_next.py:949:                initial_state = ssm_state.new_zeros(

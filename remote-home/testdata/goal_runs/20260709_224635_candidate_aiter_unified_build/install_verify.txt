@@ -1,0 +1,2 @@
+/usr/local/lib/python3.10/dist-packages/vllm/platforms/rocm.py
+aiter_unified_priority True

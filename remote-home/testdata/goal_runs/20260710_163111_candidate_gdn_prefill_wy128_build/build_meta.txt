@@ -1,0 +1,17 @@
+run_id=20260710_163111_candidate_gdn_prefill_wy128_build
+out=/public/home/tangyu408/testdata/goal_runs/20260710_163111_candidate_gdn_prefill_wy128_build
+start=2026-07-10T16:31:11+08:00
+pwd=/public/home/tangyu408/vllm_cscc
+Python 3.10.12
+ M setup.py
+ M vllm/model_executor/layers/fla/ops/wy_fast.py
+ M vllm/model_executor/models/qwen3_next.py
+ M vllm/platforms/rocm.py
+ M vllm/v1/attention/backends/gdn_attn.py
+ M vllm/v1/attention/backends/rocm_aiter_unified_attn.py
+ M vllm/version.py
+18:USE_DEFAULT_FLA_NORM = int(os.getenv("USE_DEFAULT_FLA_NORM", "0"))
+114:    if not USE_DEFAULT_FLA_NORM:
+135:    BK = 128
+136:    BV = 128
+-rw-r--r-- 1 root root 50784155 Jul 10 16:03 dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl

@@ -1,0 +1,95 @@
+{
+  "analysis_type": "vllm_qwen35_selected_layer_process_latency_hiptx",
+  "captured_by_layer": {},
+  "captured_events": [],
+  "context": "16-32K",
+  "evidence_boundary": {
+    "instrumentation": "target layers use native RMSNorm/RoPE boundaries and per-process synchronize to keep HIP kernels inside ranges",
+    "process_index": "process ids/titles mirror selected_layer_fx_process_visualization.md",
+    "runtime": "ranges are emitted during vLLM eager generate() target-layer execution"
+  },
+  "observed_layer_event_count": 0,
+  "outputs": {
+    "process_latency_events": "profile_runs/selected_layer_fx_20260707_codex/process_latency/contexts/16-32K/trace/process_latency_events.csv",
+    "process_latency_layer_events": "profile_runs/selected_layer_fx_20260707_codex/process_latency/contexts/16-32K/trace/process_latency_layer_events.csv",
+    "run_metadata": "profile_runs/selected_layer_fx_20260707_codex/process_latency/contexts/16-32K/trace/run_metadata.json"
+  },
+  "patch_errors": [],
+  "pid": 72640,
+  "process_groups": [
+    {
+      "order": 1,
+      "process_id": "runtime_inputs",
+      "title": "Runtime FX Inputs"
+    },
+    {
+      "order": 2,
+      "process_id": "pre_attention_residual_rmsnorm",
+      "title": "Pre-Attention Residual Add And Input RMSNorm"
+    },
+    {
+      "order": 3,
+      "process_id": "qkv_projection_and_split",
+      "title": "Fused Q/Gate/K/V Projection And Head Reshape"
+    },
+    {
+      "order": 4,
+      "process_id": "q_head_rmsnorm",
+      "title": "Q Head RMSNorm"
+    },
+    {
+      "order": 5,
+      "process_id": "k_head_rmsnorm",
+      "title": "K Head RMSNorm"
+    },
+    {
+      "order": 6,
+      "process_id": "mrope_table_lookup",
+      "title": "MROPE Cos/Sin Table Lookup And Axis Remap"
+    },
+    {
+      "order": 7,
+      "process_id": "q_rope_apply",
+      "title": "Q RoPE Application"
+    },
+    {
+      "order": 8,
+      "process_id": "k_rope_apply",
+      "title": "K RoPE Application"
+    },
+    {
+      "order": 9,
+      "process_id": "vllm_attention_and_kv_cache",
+      "title": "vLLM Attention And KV Cache Update"
+    },
+    {
+      "order": 10,
+      "process_id": "attention_gate_projection_residual",
+      "title": "Attention Gate, Output Projection, And Residual"
+    },
+    {
+      "order": 11,
+      "process_id": "post_attention_rmsnorm",
+      "title": "Post-Attention RMSNorm"
+    },
+    {
+      "order": 12,
+      "process_id": "mlp_and_layer_output",
+      "title": "MLP And Layer Output Tuple"
+    }
+  ],
+  "roctx_error": null,
+  "roctx_loaded": true,
+  "strategy": "selected target layers execute Python-visible native process boundaries and emit ROCTX/HIPTX ranges",
+  "sync_enabled": true,
+  "target_any_forward_layers": [],
+  "target_event_keys": [
+    "input1_layer3",
+    "input2_layer31",
+    "input4_layer59"
+  ],
+  "target_phases": [
+    "prefill_chunk"
+  ],
+  "targets": "1:3,2:31,4:59"
+}

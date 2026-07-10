@@ -1,0 +1,10 @@
+stop_start=2026-07-10T16:33:46+08:00
+root      173911       1  0 16:05 ?        00:00:00 bash ./start_vllm.sh
+root      173912  173911  3 16:05 ?        00:00:59 /usr/bin/python3 /usr/local/bin/vllm serve ../Qwen3.5-27B --served-model-name Qwen3.5-27B --port 8001 --trust-remote-code --dtype bfloat16 --tensor-parallel-size 1 --max-num-seqs 128 --max-num-batched-tokens 4096 --gpu-memory-utilization 0.95 --default-chat-template-kwargs {"enable_thinking": false} --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder
+root      177497  177486  0 16:33 ?        00:00:00 bash -c  set -eo pipefail source /opt/dtk-26.04-DCC2602-0317/env.sh OUT=/public/home/tangyu408/testdata/goal_runs/20260710_163212_candidate_gdn_prefill_wy128_build cd /public/home/tangyu408/testdata {   echo "stop_start=$(date -Is)"   ps -ef | grep -E "[v]llm serve|[s]tart_vllm" || true } > "$OUT/stop_install.log" 2>&1 PIDS=$(pgrep -f "/usr/local/bin/vllm serve ../Qwen3.5-27B" || true) if [ -n "$PIDS" ]; then kill $PIDS || true; fi sleep 3 PIDS=$(pgrep -f "/usr/local/bin/vllm serve ../Qwen3.5-27B" || true) if [ -n "$PIDS" ]; then kill -9 $PIDS || true; fi PIDS=$(pgrep -f "bash ./start_vllm.sh" || true) if [ -n "$PIDS" ]; then kill $PIDS || true; fi sleep 1 {   echo "after_stop=$(date -Is)"   ps -ef | grep -E "[v]llm serve|[s]tart_vllm" || true } >> "$OUT/stop_install.log" 2>&1 cd /public/home/tangyu408/vllm_cscc python3 -m pip install --force-reinstall --no-deps dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl > "$OUT/pip_install.log" 2>&1 {   echo "install_end=$(date -Is)"   grep -n "USE_DEFAULT_FLA_NORM" /usr/local/lib/python3.10/dist-packages/vllm/model_executor/layers/fla/ops/l2norm.py   grep -n "BK =\|BV =" /usr/local/lib/python3.10/dist-packages/vllm/model_executor/layers/fla/ops/wy_fast.py | head -10   python3 - <<"PY" import vllm print(vllm.__version__) PY } >> "$OUT/stop_install.log" 2>&1 printf "%s\n" "$OUT" 
+install_end=2026-07-10T16:34:29+08:00
+18:USE_DEFAULT_FLA_NORM = int(os.getenv("USE_DEFAULT_FLA_NORM", "0"))
+114:    if not USE_DEFAULT_FLA_NORM:
+135:    BK = 128
+136:    BV = 128
+0.18.1

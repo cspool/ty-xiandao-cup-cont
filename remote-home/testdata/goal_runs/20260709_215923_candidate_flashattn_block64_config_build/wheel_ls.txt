@@ -1,0 +1,1 @@
+-rw-r--r-- 1 root root 49M Jul  9 22:00 dist/vllm-0.18.1+das.dtk2604-cp310-cp310-linux_x86_64.whl
