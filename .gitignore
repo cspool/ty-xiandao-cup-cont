@@ -13,8 +13,7 @@ authorized_keys
 known_hosts
 .ai_user_info/
 
-# Mounted remote home and runtime data
-remote-home/
+# Runtime data
 testdata/
 goal_runs/
 accuracy_debug/
