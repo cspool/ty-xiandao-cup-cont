@@ -1,0 +1,12 @@
+rank 1 sent 100
+rank 0 received 100
+PASSED mpi_pingpong
+[33mHIP_PROF [2026-07-07 19:43:27.906712] [54571] [WARN]: 'mpi_wrap.db' has not valid trace data.[m
+HIP_PROF:on Tue Jul  7 19:43:26 2026
+HIP_PROF:process id '54570'
+HIP_PROF:db file 'mpi_wrap.db'
+HIP_PROF:out put file 'mpi_wrap'
+HIP_PROF:profiling ' mpirun --allow-run-as-root --mca coll ^hcoll -np 2 ../mpi_pingpong'
+HIP_PROF:process begin
+HIP_PROF:process end run total cost:0(s)
+HIP_PROF:finish

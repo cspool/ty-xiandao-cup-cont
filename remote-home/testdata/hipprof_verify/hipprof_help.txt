@@ -1,0 +1,91 @@
+Full path: /opt/dtk-26.04-DCC2602-0317/hip/bin/hipprof
+Usage:
+  hipprof [options] <app command line>
+
+Options:
+  -h                          - this help.
+  -o <output file>            - for the output filepath[a/, a/b/, /a/b/] and filename[a, a/b, /a/b/c].
+  -d <data directory>         - to change the temporary directory [/tmp].
+  --output-type <type code>   - specify output trace file format (options: 0=json, 1=html, 2=pftrace default: 2).
+
+tracing options:
+  --hiptx-trace               - to enable HIPTX application code annotation trace.
+  --hiptx-kernel              - to enable HIPTX kernel application code annotation trace.
+  --hip-trace                 - to trace HIP, HIP copy, HIP kernel generates API execution stats and trace file.
+  --libc-trace                - to trace LIBC generates API execution stats and trace file.
+  --hsa-trace                 - to trace HSA, HSA copy, HSA kernel generates API execution stats and trace file.
+  --cl-trace                  - to trace OpenCL, OpenCL copy, OpenCL kernel generates API execution stats and trace file.
+  --omp-trace                 - to trace OpenMP, OpenMP copy, OpenMP kernel generates API execution stats and trace file.
+  --rccl-trace                - to trace RCCL, RCCL kernel generates API execution stats and trace file.
+  --mpi-trace                 - to trace MPI generates API execution stats and trace file.
+  --barrier                   - to trace HIP barrier, OpenCL barrier, OpenMP barrier generates API execution stats and trace file.
+  --kernel-stack              - export csv file [<result_pid>.stack.csv] to save the stack information of the kernel.
+
+  --no-export                 - export trace db only.
+  --stats                     - print and export statistics only without trace file.
+  --show-pid                  - print and export statistics grouped by PID.
+  --segment-size <size>       - the maximum number of traces in a single trace file, default 5000000, at least 5000.
+  --group-stream              - to export trace time line group by stream.
+  --trace-args                - tracking collection parameters (not collected by default since version 25.04.2).
+  --devices <device id>       - only the OPS and COPY of the specified device[0 0,1 0,1,2] are output.
+  --print-trace               - print performance analysis process data of HIP、OpenCL、RCCL、OpenMP on the terminal.
+  --mask-trace <config file>  - specify APIs of HIP for analysis and reduce the amount of data to analyze.
+  --libc-trace-level <level>  - limit the api level of the traced libc,default level 1. 1:track of all libc apis,0:track of common libc apis.
+  --trace-off                 - to disable tracing on start.
+
+  --db <db file name>         - export data from the existing database(s)[1.db, 2.db:3.db:4.db] specified via --db.
+  --db-path <db path>         - export data from the existing database(s) in db path specified via --db-path.
+  --db-merge <db file path>   - merge multiple db files and export new combined traces.
+  --merge-type <type id>      - select merge type, 0 is default original time, 1 is time alignment.
+  --show-trace-id             - show the trace-ids in the dbs specified by --db or --db-path .
+  --set-trace-id <trace id>   - filter trace data in the databases specified by --db or --db-path.
+  --index-range <start:end>   - to export partial data by index range, start and end are separated by ':'.
+
+  --flush-interval <ms>       - auto flush memory to database when the time interval between the last flush time and the current time is greater than the flush time, default is 5000 ms.
+  --buffer-size <size>        - auto flush memory to database when api record count is larger than buffer-size, default is 100000.
+  --exit-cleanup              - to intercept system calls such as '_exit'.
+  --follow-fork               - to track child processes to monitor their execution status.
+
+cluster options:
+  --master                    - to enable the master node server.
+  --port <port num>           - to specify the communication interface.
+  --node-list <ip|name[,...]> - to specify child nodes to perform performance profiling. examples:b03r4n11,b03r3n[00-02,05].
+  --data-mode <mode id>       - to specify the data transmission method from the worker node to the head node.0:DB,1:RT,2:UNSET.
+  --slave                     - to enable the slave node client.
+  --master-address <ip|ip:port>- to specify the communication ip address of the master node, default eno1 network card.
+  --netcard <card name>       - to specify the communication network card name.
+  --pid-file <pid file name>  - to specify the pid filename.
+
+leak-check options:
+  --leak-check                - check host and device leak memory, output <result_pid>.leakcheck.html and <result_pid>.mem<pid>.html.
+  --check-minsize <size>      - less than this size, no stack information is generated, default is 1.
+  --memory-usage              - generates memory use chart webpage. output <result_pid>.mem<pid>.html.
+  --db <db file name>         - export leak-check data from the existing database specified via --db.
+  --time-range <start:end>    - filter leak data in the database specified by --db based on time range(Unit second).
+  --record-memfreeinfo        - record memory free information, default no record.
+  --show-limit <limit_num>    - limit the quantity of leak function stacks.
+
+session options:
+  --session <name>            - dynamic control of the performance analysis process or leak-check process through the session(server).
+  --session-client <name>     - dynamic control of the performance analysis process or leak-check process through the session(client).
+  --show-nodes                - use instruction to get cluster node information --session-client <--show-nodes>.
+  --start                     - use instruction to control tracing or leak-check --session-client <--start>.
+  --stop                      - use instruction to control tracing or leak-check --session-client <--stop>.
+  --flush                     - use instruction to control tracing --session-client <--flush>.
+  --exit                      - use instruction to control tracing --session-client <--exit>.
+
+pmc options:
+  --pmc                       - to open pmc performance profile.
+  --pmc-read                  - to open pmc read focus profile.
+  --pmc-write                 - to open pmc write focus profile.
+  --pmc-type                  - select pmc export type 0(default) is full name of performance, 1 is simplified name, 2 is basic data, 3 is csv table.
+  --pmc-off                   - to disable pmc on start.
+  --kernel-name <kernel>      - filter the kernel name for profiling.
+  --kernel-profile-mode <mode> - set kernel profile data collection mode. Mode 0 is default; Mode 1 (external) adds OpenCL support.
+
+coredump analyzer options:
+  --input-core <core file>    - enable core dump analyzer and set input core file.
+
+code object analyzer options:
+  --codeobj-analyze <ELF file> - analyze register pressure of kernel functions in ELF files.
+

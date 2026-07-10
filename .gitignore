@@ -14,11 +14,22 @@ known_hosts
 .ai_user_info/
 
 # Runtime data
-testdata/
+/testdata/
 goal_runs/
 accuracy_debug/
 profile_runs/
 xiandao_logs/
+
+# Keep sanitized remote test inputs and scripts, but not generated outputs.
+!remote-home/testdata/
+!remote-home/testdata/**
+remote-home/testdata/goal_runs/
+remote-home/testdata/accuracy_debug/
+remote-home/testdata/profile_runs/
+remote-home/testdata/test/
+remote-home/testdata/optimization_env/
+remote-home/testdata/__pycache__/
+remote-home/testdata/**/*.pyc
 
 # Build outputs and dependencies
 build/

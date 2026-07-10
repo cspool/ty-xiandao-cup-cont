@@ -1,0 +1,5 @@
+"Name","Calls","TotalDurationNs","AverageNs","Percentage"
+"hipMalloc","3","23430418","7810139","99.9799019659718"
+"hipGetDeviceProperties","1","3810","3810","0.0162576453604179"
+"hipGetDevice","1","900","900","0.00384038866781526"
+"Total","5","23435128","4687025","100.0"

@@ -1,0 +1,4 @@
+"Name","Calls","TotalDurationNs","AverageNs","Percentage"
+"vector_add_roctx_kernel(float const*, float const*, float*, int)","1","21119","21119","50.382"
+"vector_add_kernel(float const*, float const*, float*, int)","1","20799","20799","49.618"
+"Total","2","41918","20959","100.0"

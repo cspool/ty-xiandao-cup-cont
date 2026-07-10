@@ -1,0 +1,10 @@
+Device name BW
+PASSED vector_add_hipprof
+HIP_PROF:on Tue Jul  7 19:45:39 2026
+HIP_PROF:process id '55960'
+HIP_PROF:db file 'hip-prof-55960.db'
+HIP_PROF:out put file 'result_55960'
+HIP_PROF:profiling ' ../vector_add_hipprof'
+HIP_PROF:process begin
+HIP_PROF:process end run total cost:1(s)
+HIP_PROF:finish

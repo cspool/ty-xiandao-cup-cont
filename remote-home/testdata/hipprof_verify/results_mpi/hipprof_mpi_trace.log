@@ -1,0 +1,32 @@
+[worker-0:54544:0:54544] Caught signal 11 (Segmentation fault: address not mapped to object at address 0x2a59)
+[worker-0:54545:0:54545] Caught signal 11 (Segmentation fault: address not mapped to object at address 0x1a8a)
+==== backtrace (tid:  54544) ====
+ 0  /opt/ucx/lib/libucs.so.0(ucs_handle_error+0x2e4) [0x7f9842aaece4]
+ 1  /opt/ucx/lib/libucs.so.0(+0x34ee7) [0x7f9842aaeee7]
+ 2  /opt/ucx/lib/libucs.so.0(+0x351c6) [0x7f9842aaf1c6]
+ 3  /lib/x86_64-linux-gnu/libc.so.6(+0x42520) [0x7f9842842520]
+ 4  /lib/x86_64-linux-gnu/libc.so.6(+0x1b20bc) [0x7f98429b20bc]
+ 5  hipprof() [0x67eefe]
+ 6  hipprof() [0x6ad92d]
+ 7  hipprof() [0x6acf46]
+ 8  hipprof() [0x48c719]
+ 9  /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7f9842829d90]
+10  /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x7f9842829e40]
+11  hipprof() [0x426a0e]
+=================================
+==== backtrace (tid:  54545) ====
+ 0  /opt/ucx/lib/libucs.so.0(ucs_handle_error+0x2e4) [0x7f50c30aece4]
+ 1  /opt/ucx/lib/libucs.so.0(+0x34ee7) [0x7f50c30aeee7]
+ 2  /opt/ucx/lib/libucs.so.0(+0x351c6) [0x7f50c30af1c6]
+ 3  /lib/x86_64-linux-gnu/libc.so.6(+0x42520) [0x7f50c2e42520]
+ 4  /lib/x86_64-linux-gnu/libc.so.6(+0x1b20bc) [0x7f50c2fb20bc]
+ 5  hipprof() [0x67eefe]
+ 6  hipprof() [0x6ad92d]
+ 7  hipprof() [0x6acf46]
+ 8  hipprof() [0x48c719]
+ 9  /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7f50c2e29d90]
+10  /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x7f50c2e29e40]
+11  hipprof() [0x426a0e]
+=================================
+HIP_PROF:Child killed by signal 11
+HIP_PROF:Child killed by signal 11

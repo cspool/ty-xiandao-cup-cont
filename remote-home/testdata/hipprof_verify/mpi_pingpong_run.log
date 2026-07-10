@@ -1,0 +1,3 @@
+rank 1 sent 100
+rank 0 received 100
+PASSED mpi_pingpong

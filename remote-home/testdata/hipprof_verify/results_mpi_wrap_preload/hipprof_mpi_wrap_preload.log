@@ -1,0 +1,28 @@
+MPITRACER	Use openmpi!
+MPITRACER	Inject MPI to Trace Traffic
+MPITRACER	Total ranks: 2
+MPITRACER	Log file:/dev/shm/mpi_trace_<rankid>.log, Max entries:100000
+MPITRACER	Use Timer: clock_gettime
+MPITRACER	Use Realtime Writer thread to log
+MPITRACER	The summary of all trace will be saved to host of rank 0 in path /tmp/mpi_trace_task_<time>.log
+MPITRACER	WARNING Enabled if find program bugs in using Non-blocking API
+MPITRACER	Use openmpi!
+rank 1 sent 100
+rank 0 received 100
+PASSED mpi_pingpong
+MPITRACER	Please check files of /dev/shm/mpi_trace_<rank_id>.log on each node
+MPITRACER	Record 4 traces of rank 0
+MPITRACER	Trace summary saved to worker-0:/tmp/mpi_trace_task_0707194545.log
+HIP_PROF:on Tue Jul  7 19:45:45 2026
+HIP_PROF:process id '55992'
+HIP_PROF:db file 'mpi_wrap_preload.db'
+HIP_PROF:out put file 'mpi_wrap_preload'
+HIP_PROF:profiling ' mpirun --allow-run-as-root --mca coll ^hcoll -np 2 -x LD_LIBRARY_PATH -x LD_PRELOAD=/opt/dtk-26.04-DCC2602-0317/lib/mpitracer.so:/opt/mpi/lib/libmpi.so.40 ../mpi_pingpong'
+HIP_PROF:process begin
+HIP_PROF:process end run total cost:1(s)
+HIP_PROF:find mpi trace log file /dev/shm/mpi_trace_1.log
+HIP_PROF:find mpi trace log file /dev/shm/mpi_trace_0.log
+HIP_PROF:delete old mpi trace log file /dev/shm/mpi_trace_1.log
+HIP_PROF:delete old mpi trace log file /dev/shm/mpi_trace_0.log
+HIP_PROF:dump json trace (0/6)HIP_PROF:dump json trace (6/6)HIP_PROF:dump json trace (6/6)HIP_PROF:dump json trace (6/6)HIP_PROF:dump json trace (6/6)HIP_PROF:dump json trace (6/6)
+HIP_PROF:finish

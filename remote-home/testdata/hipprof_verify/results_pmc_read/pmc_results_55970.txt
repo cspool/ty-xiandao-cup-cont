@@ -1,0 +1,24 @@
+kernel-name:"_Z17vector_add_kernelPKfS0_Pfi"
+ kernel dispatch index                     0
+ gpu id                                    0
+ dispatch queue id                         0
+ dispatch queue index                      6
+ process id                                55974
+ thread id                                 55974
+ grid size                                 1048576
+ work group size                           256
+ shared memory size                        0
+ scratch size                              0
+ vgpr count                                8
+ sgpr count                                16
+ signal handle                             0x0
+ kernel time                               0.000020(s)
+ processed ALU instructions                6.6148344676(%)
+ performance                               1433.600000(Gflops)
+ shared memory operation                   0
+ shared memory bank conflict               0.0000000000(%)
+ L1 cache unit is active                   22.4031030107(%)
+ L1 cache unit is stalled                  5.9854077748(%)
+ number of L2 cache read requests          131085.0000000000
+ size of L2 cache read                     8192.8125000000(kilobytes)
+
